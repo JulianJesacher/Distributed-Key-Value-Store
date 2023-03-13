@@ -11,3 +11,6 @@ add_test(byteArrayTest ByteArray_l ByteArray.test.cpp)
 
 #KeyValueStore Test
 add_test(keyValueStoreTest KeyValueStore_l InMemoryKVS.test.cpp)
+
+#Networking Test
+add_test(networkingTest Networking_l Net.test.cpp)
