@@ -20,7 +20,7 @@ TEST_CASE("Test FileDescriptor") {
         CHECK_EQ(fd.unwrap(), 4);
 
         auto moved{ std::move(fd) };
-        CHECK_EQ(fd.unwrap(), -1);
+        CHECK_EQ(fd.unwrap(), -1); // NOLINT
         CHECK_EQ(moved.unwrap(), 4);
     }
 }
