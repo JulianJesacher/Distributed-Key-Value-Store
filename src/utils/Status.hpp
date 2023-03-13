@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ByteArray.h"
+#include "ByteArray.hpp"
 
 #include <string>
 
@@ -15,44 +15,36 @@ enum class StatusCode
 class Status
 {
 public:
-    ~Status() = default;
-
-    Status(const Status& other);
-    Status& operator=(const Status& other);
-
-    Status(Status&& other) noexcept;
-    Status& operator=(Status&& other) noexcept;
-
-    static Status OK() {
+    static Status new_ok() {
         return Status();
     };
 
-    static Status NotFound(const ByteArray& msg) {
+    static Status new_not_found(const ByteArray& msg) {
         return Status(StatusCode::s_NotFound, msg);
     }
 
-    static Status NotSupported(const ByteArray& msg) {
+    static Status new_not_supported(const ByteArray& msg) {
         return Status(StatusCode::s_NotSupported, msg);
     }
 
-    static Status InvalidArgument(const ByteArray& msg) {
+    static Status new_invalid_argument(const ByteArray& msg) {
         return Status(StatusCode::s_InvalidArgument, msg);
     }
 
     bool ok() const {
         return errorCode_ == StatusCode::s_Ok;
     }
-    bool isNotFound() const {
+    bool is_not_found() const {
         return errorCode_ == StatusCode::s_NotFound;
     }
-    bool isNotSupported() const {
+    bool is_not_supported() const {
         return errorCode_ == StatusCode::s_NotSupported;
     }
-    bool isInvalidArgument() const {
+    bool is_invalid_argument() const {
         return errorCode_ == StatusCode::s_InvalidArgument;
     };
 
-    std::string getMsg() const {
+    std::string get_msg() const {
         return errorMsg_;
     }
 

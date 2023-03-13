@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 
-add_library(ByteArray_l include/ByteArray.h utils/ByteArray.cpp)
-
+#ByteArray library
+add_library(ByteArray_l utils/ByteArray.hpp utils/ByteArray.cpp)
 target_include_directories(ByteArray_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+#KeyValueStore library
+add_library(KeyValueStore_l KVS/IKeyValueStore.hpp KVS/InMemoryKVS.hpp KVS/InMemoryKVS.cpp)
+target_include_directories(KeyValueStore_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
