@@ -31,7 +31,7 @@ public:
         return Status(StatusCode::s_InvalidArgument, msg);
     }
 
-    bool ok() const {
+    bool is_ok() const {
         return errorCode_ == StatusCode::s_Ok;
     }
     bool is_not_found() const {
