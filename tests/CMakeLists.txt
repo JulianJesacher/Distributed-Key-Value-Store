@@ -7,7 +7,7 @@ endfunction()
 
 
 #ByteArray Test
-add_test(byteArrayTest ByteArray_l testByteArray.cpp)
+add_test(byteArrayTest ByteArray_l ByteArray.test.cpp)
 
 #KeyValueStore Test
-add_test(keyValueStoreTest KeyValueStore_l testInMemoryKVS.cpp)
+add_test(keyValueStoreTest KeyValueStore_l InMemoryKVS.test.cpp)
