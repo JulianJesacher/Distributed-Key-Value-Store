@@ -7,7 +7,7 @@
 class IByteArrayResource
 {
 public:
-    virtual ~IByteArrayResource()=default;
+    virtual ~IByteArrayResource() = default;
     virtual char* data() = 0;
     virtual const char* data() const = 0;
     virtual uint64_t size() const = 0;
@@ -45,10 +45,14 @@ private:
 class ByteArray {
 public:
 
+    ByteArray() = default;
+    ByteArray(const ByteArray& other) = default;
+    ByteArray& operator=(const ByteArray& other) = default;
+
     static ByteArray new_allocated_byte_array(uint64_t size);
     static ByteArray new_allocated_byte_array(char* data, uint64_t size);
-    static ByteArray new_allocated_byte_array(std::string &data);
-    static ByteArray new_allocated_byte_array(std::string &&data);
+    static ByteArray new_allocated_byte_array(std::string& data);
+    static ByteArray new_allocated_byte_array(std::string&& data);
 
     char* data() {
         return resource_->data();
