@@ -9,7 +9,7 @@ namespace net {
     }
 
     FileDescriptor::~FileDescriptor() {
-        if (fd_.has_value()) {
+        if (fd_.has_value() && *fd_ >= 0) {
             close(fd_.value());
         }
     }
