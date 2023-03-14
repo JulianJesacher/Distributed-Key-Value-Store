@@ -48,6 +48,8 @@ public:
     ByteArray() = default;
     ByteArray(const ByteArray& other) = default;
     ByteArray& operator=(const ByteArray& other) = default;
+    ByteArray(ByteArray&& other) noexcept;
+    ByteArray& operator=(ByteArray&& other) noexcept;
 
     static ByteArray new_allocated_byte_array(uint64_t size);
     static ByteArray new_allocated_byte_array(char* data, uint64_t size);
