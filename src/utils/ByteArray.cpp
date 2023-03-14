@@ -49,6 +49,20 @@ AllocatedByteArrayResource::~AllocatedByteArrayResource() {
 
 
 //ByteArray
+ByteArray::ByteArray(ByteArray&& other) noexcept {
+    resource_ = std::move(other.resource_);
+    other.resource_ = nullptr;
+}
+
+ByteArray& ByteArray::operator=(ByteArray&& other) noexcept {
+    if (this == &other) {
+        return *this;
+    }
+    resource_ = std::move(other.resource_);
+    other.resource_ = nullptr;
+    return *this;
+}
+
 ByteArray ByteArray::new_allocated_byte_array(char* data, uint64_t size) {
     ByteArray ba{};
     ba.resource_ = std::make_shared<AllocatedByteArrayResource>(data, size);
