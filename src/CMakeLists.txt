@@ -23,5 +23,24 @@ target_include_directories(KeyValueStore_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(Networking_l
     net/FileDescriptor.hpp
     net/FileDescriptor.cpp
+    net/Socket.hpp
+    net/Socket.cpp
+    net/Connection.hpp
+    net/Connection.cpp
 )
 target_include_directories(Networking_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+#Node library
+add_library(Node_l
+    node/Instruction.hpp
+    node/Instruction.cpp
+    net/FileDescriptor.hpp
+    net/FileDescriptor.cpp
+    net/Socket.hpp
+    net/Socket.cpp
+    net/Connection.hpp
+    net/Connection.cpp
+    client/Client.hpp
+    client/Client.cpp
+)
+target_include_directories(Node_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
