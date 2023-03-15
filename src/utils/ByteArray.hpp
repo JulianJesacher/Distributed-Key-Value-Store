@@ -7,6 +7,10 @@
 class IByteArrayResource
 {
 public:
+    class CopyTag {};
+    class ShallowCopyTag: public CopyTag {};
+    class DeepCopyTag: public CopyTag {};
+
     virtual ~IByteArrayResource() = default;
     virtual char* data() = 0;
     virtual const char* data() const = 0;
@@ -15,9 +19,9 @@ public:
 
 class AllocatedByteArrayResource: public IByteArrayResource {
 public:
-
-    AllocatedByteArrayResource(const char* data, uint64_t size);
     AllocatedByteArrayResource(uint64_t size);
+    AllocatedByteArrayResource(const char* data, uint64_t size, DeepCopyTag tag);
+    AllocatedByteArrayResource(char* data, uint64_t size, ShallowCopyTag tag);
 
     AllocatedByteArrayResource(const AllocatedByteArrayResource& other);
     AllocatedByteArrayResource& operator=(const AllocatedByteArrayResource& other);

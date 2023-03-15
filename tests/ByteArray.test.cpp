@@ -10,7 +10,7 @@ TEST_CASE("Test AllocatedByteArrayResource") {
     SUBCASE("Create Resource") {
         char* buf = new char[10];
         {
-            AllocatedByteArrayResource resource(buf, 10);
+            AllocatedByteArrayResource resource(buf, 10, IByteArrayResource::DeepCopyTag{});
             CHECK_EQ(resource.size(), 10);
             CHECK(memcmp(buf, resource.data(), 10) == 0);
         }
@@ -21,7 +21,7 @@ TEST_CASE("Test AllocatedByteArrayResource") {
         char* buf = new char[test_string_length];
         memcpy(buf, test_string.c_str(), test_string_length);
 
-        AllocatedByteArrayResource a(buf, test_string_length);
+        AllocatedByteArrayResource a(buf, test_string_length, IByteArrayResource::DeepCopyTag{});
         AllocatedByteArrayResource b(a);
 
         CHECK(a.data() != b.data());
@@ -34,7 +34,7 @@ TEST_CASE("Test AllocatedByteArrayResource") {
         char* buf = new char[test_string_length];
         memcpy(buf, test_string.c_str(), test_string_length);
 
-        AllocatedByteArrayResource a(buf, test_string_length);
+        AllocatedByteArrayResource a(buf, test_string_length, IByteArrayResource::DeepCopyTag{});
         AllocatedByteArrayResource b = std::move(a);
 
         CHECK(a.data() == nullptr); // NOLINT

@@ -9,11 +9,19 @@ AllocatedByteArrayResource::AllocatedByteArrayResource(uint64_t size) {
     size_ = size;
 }
 
-AllocatedByteArrayResource::AllocatedByteArrayResource(const char* data, uint64_t size): AllocatedByteArrayResource(size) {
+// NOLINTNEXTLINE
+AllocatedByteArrayResource::AllocatedByteArrayResource(const char* data, uint64_t size, DeepCopyTag tag) : AllocatedByteArrayResource(size) {
     memcpy(data_, data, size);
 }
 
-AllocatedByteArrayResource::AllocatedByteArrayResource(const AllocatedByteArrayResource& other): AllocatedByteArrayResource(other.data(), other.size()) {}
+// NOLINTNEXTLINE
+AllocatedByteArrayResource::AllocatedByteArrayResource(char* data, uint64_t size, ShallowCopyTag tag) {
+    data_ = data;
+    size_ = size;
+}
+
+AllocatedByteArrayResource::AllocatedByteArrayResource(const AllocatedByteArrayResource& other):
+    AllocatedByteArrayResource(other.data(), other.size(), DeepCopyTag{}) {}
 
 AllocatedByteArrayResource::AllocatedByteArrayResource(AllocatedByteArrayResource&& other) noexcept {
     data_ = std::move(other.data_);
@@ -47,7 +55,6 @@ AllocatedByteArrayResource::~AllocatedByteArrayResource() {
     delete[] data_;
 }
 
-
 //ByteArray
 ByteArray::ByteArray(ByteArray&& other) noexcept {
     resource_ = std::move(other.resource_);
@@ -65,7 +72,7 @@ ByteArray& ByteArray::operator=(ByteArray&& other) noexcept {
 
 ByteArray ByteArray::new_allocated_byte_array(char* data, uint64_t size) {
     ByteArray ba{};
-    ba.resource_ = std::make_shared<AllocatedByteArrayResource>(data, size);
+    ba.resource_ = std::make_shared<AllocatedByteArrayResource>(data, size, IByteArrayResource::DeepCopyTag{});
     return ba;
 }
 
