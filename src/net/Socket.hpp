@@ -8,6 +8,10 @@
 
 namespace net {
 
+    [[nodiscard]] bool is_listening(int fd);
+
+    [[nodiscard]] bool is_listening(FileDescriptor& fd);
+
     class Socket {
     public:
         Socket();
