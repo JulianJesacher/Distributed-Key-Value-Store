@@ -16,20 +16,27 @@ namespace net {
 
     FileDescriptor::FileDescriptor(FileDescriptor&& other) noexcept {
         fd_ = std::move(other.fd_);
-        other.fd_.reset();
+        other.fd_ = std::nullopt;
     }
 
     FileDescriptor& FileDescriptor::operator=(FileDescriptor&& other) noexcept {
         if (this == &other) {
             return *this;
         }
-        other.fd_ = std::move(fd_);
-        other.fd_.reset();
+        fd_ = std::move(other.fd_);
+        other.fd_ = std::nullopt;
         return *this;
     }
 
     int FileDescriptor::unwrap() const {
-        return fd_.value_or(-1);
+        if (fd_.has_value()) {
+            return *fd_;
+        }
+        return -1;
+    }
+
+    FileDescriptor::operator int() const {
+        return unwrap();
     }
 
 }
