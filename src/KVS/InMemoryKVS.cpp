@@ -1,7 +1,5 @@
 #include "InMemoryKVS.hpp"
 
-#include <cstring>
-
 // NOLINTNEXTLINE
 Status InMemoryKVS::put(const std::string& key, const ByteArray& value, const WriteOptions& options) {
     mapping_[key] = ByteArray(std::move(value));
