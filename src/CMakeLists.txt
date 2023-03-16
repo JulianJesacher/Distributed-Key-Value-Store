@@ -44,5 +44,12 @@ add_library(Node_l
     client/Client.cpp
     utils/ByteArray.hpp
     utils/ByteArray.cpp
+    node/InstructionHandler.hpp
+    node/InstructionHandler.cpp
+    KVS/IKeyValueStore.hpp
+    KVS/InMemoryKVS.hpp
+    KVS/InMemoryKVS.cpp
+    utils/Status.hpp
+    utils/Status.cpp
 )
 target_include_directories(Node_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

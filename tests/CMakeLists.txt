@@ -17,3 +17,6 @@ add_test(networkingTest Networking_l Net.test.cpp)
 
 #ProtocolHandler Test
 add_test(protocolHandlerTest Node_l ProtocolHandler.test.cpp NetworkingHelper.hpp)
+
+#InstructionHandler Test
+add_test(instructionHandlerTest Node_l InstructionHandler.test.cpp NetworkingHelper.hpp)
