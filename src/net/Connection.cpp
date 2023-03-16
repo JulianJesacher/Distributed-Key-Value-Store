@@ -39,15 +39,22 @@ namespace net {
         return net::send(fd_.unwrap(), data, size);
     }
 
-    ssize_t Connection::receive(std::ostream& stream) const {
-        char buf[128];
-        std::span<char> data(buf, 128);
+    ssize_t Connection::receive_all(std::ostream& stream) const {
+        char buf[net::receive_all_buffer_size];
+        std::span<char> data(buf, net::receive_all_buffer_size);
 
-        ssize_t bytes_received = net::receive(fd_.unwrap(), data);
-        auto it = data.begin();
-        for (ssize_t i = 0; i < bytes_received; i++) {
-            stream << (*it++);
+        ssize_t total_byte_received = 0;
+        while (ssize_t bytes_received = net::receive(fd_.unwrap(), data)) {
+            total_byte_received += bytes_received;
+            stream.write(buf, net::receive_all_buffer_size);
         }
-        return bytes_received;
+        return total_byte_received;
+    }
+
+    ssize_t Connection::receive(char* data, uint64_t size) const {
+        return net::receive(fd_, data, size);
+    }
+    ssize_t Connection::receive(std::span<char> data) const {
+        return net::receive(fd_, data);
     }
 }
