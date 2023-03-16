@@ -6,7 +6,7 @@ namespace client {
     class Client {
     public:
         Client();
-        net::Connection connect(std::string destination, uint16_t port);
+        net::Connection connect(const std::string& destination, uint16_t port);
         net::Connection connect(uint16_t port);
 
     private:
