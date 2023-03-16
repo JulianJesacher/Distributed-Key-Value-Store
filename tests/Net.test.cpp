@@ -2,18 +2,15 @@
 #include <doctest/doctest.h>
 
 #include <limits>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <arpa/inet.h>
 #include <stdexcept>
 #include <future>
 #include <random>
-#include <thread>
 
 
 #include "net/FileDescriptor.hpp"
 #include "net/Socket.hpp"
 #include "net/Connection.hpp"
+#include "NetworkingHelper.hpp"
 
 TEST_CASE("Test FileDescriptor") {
     static_assert(!std::is_copy_assignable_v<net::FileDescriptor>, "FileDescriptor should not be copy assignable");
@@ -36,35 +33,6 @@ TEST_CASE("Test FileDescriptor") {
     }
 }
 
-std::string get_random_string(uint64_t length) {
-    auto rand_char = []() -> char {
-        constexpr std::string_view Chars =
-            "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-        std::mt19937 rg{std::random_device{}()};
-        std::uniform_int_distribution<std::string::size_type> pick(0, Chars.size() -
-            1);
-        return Chars[pick(rg)];
-    };
-
-    std::string str(length, 0);
-    std::generate_n(str.begin(), length, rand_char);
-    return str;
-}
-
-
-ssize_t send_to_localhost(const std::string& data, uint16_t port) {
-    int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    std::string addr{"127.0.0.1"};
-
-    sockaddr_in server{};
-    server.sin_family = AF_INET;
-    server.sin_addr.s_addr = inet_addr(addr.c_str());
-    server.sin_port = htons(port);
-    connect(fd, reinterpret_cast<sockaddr*>(&server), sizeof(server)) == 0; // NOLINT
-    return send(fd, data.c_str(), data.size(), 0);
-}
-
 TEST_CASE("Test Socket") {
     net::Socket s{};
     CHECK_FALSE(net::is_listening(s.fd()));
@@ -74,8 +42,8 @@ TEST_CASE("Test Socket") {
     CHECK(net::is_listening(s.fd()));
 
     const auto send_data = [&]() {
-        std::string random_string{get_random_string(100)};
-        send_to_localhost(random_string, port);
+        std::string random_string{networkingHelper::get_random_string(100)};
+        networkingHelper::send(port, random_string);
         return random_string;
     };
 
