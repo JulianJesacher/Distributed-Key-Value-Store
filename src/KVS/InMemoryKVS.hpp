@@ -7,20 +7,26 @@
 #include <unordered_map>
 #include <memory>
 
-class InMemoryKVS: public IKeyValueStore {
-public:
-    InMemoryKVS()=default;
-    InMemoryKVS(const InMemoryKVS&) = delete;
-    InMemoryKVS& operator=(const InMemoryKVS&) = delete;
+namespace key_value_store {
 
-    Status put(const std::string& key, const ByteArray& value, const WriteOptions& options = WriteOptions{}) override;
-    Status get(const std::string& key, ByteArray& value, const ReadOptions& options = ReadOptions{}) const override;
-    Status erase(const std::string& key, const WriteOptions& options = WriteOptions{}) override;
+    class InMemoryKVS: public IKeyValueStore {
+    public:
+        InMemoryKVS() = default;
+        InMemoryKVS(const InMemoryKVS&) = delete;
+        InMemoryKVS& operator=(const InMemoryKVS&) = delete;
 
-    uint64_t get_size() const {
-        return mapping_.size();
-    }
+        Status put(const std::string& key, const ByteArray& value, const WriteOptions& options = WriteOptions{}) override;
+        Status get(const std::string& key, ByteArray& value, const ReadOptions& options = ReadOptions{}) const override;
+        ByteArray& get(const std::string& key, const ReadOptions& options = ReadOptions{}) override;
+        Status erase(const std::string& key, const WriteOptions& options = WriteOptions{}) override;
+        bool contains_key(const std::string& key) const override;
 
-private:
-    std::unordered_map<std::string, ByteArray> mapping_;
-};
+        uint64_t get_size() const {
+            return mapping_.size();
+        }
+
+    private:
+        std::unordered_map<std::string, ByteArray> mapping_;
+    };
+
+}

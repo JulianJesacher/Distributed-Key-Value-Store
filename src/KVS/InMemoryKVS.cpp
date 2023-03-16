@@ -1,5 +1,7 @@
 #include "InMemoryKVS.hpp"
 
+using namespace key_value_store;
+
 // NOLINTNEXTLINE
 Status InMemoryKVS::put(const std::string& key, const ByteArray& value, const WriteOptions& options) {
     mapping_[key] = ByteArray(std::move(value));
@@ -18,6 +20,14 @@ Status InMemoryKVS::get(const std::string& key, ByteArray& value, const ReadOpti
 }
 
 // NOLINTNEXTLINE
+ByteArray& InMemoryKVS::get(const std::string& key, const ReadOptions& options) {
+    if (!mapping_.contains(key)) {
+        throw std::runtime_error("The given key was not found");
+    }
+    return mapping_.at(key);
+}
+
+// NOLINTNEXTLINE
 Status InMemoryKVS::erase(const std::string& key, const WriteOptions& options) {
     if (!mapping_.contains(key)) {
         std::string error_msg{"The given key was not found"};
@@ -26,4 +36,8 @@ Status InMemoryKVS::erase(const std::string& key, const WriteOptions& options) {
 
     mapping_.erase(key);
     return Status::new_ok();
+}
+
+bool InMemoryKVS::contains_key(const std::string& key) const {
+    return mapping_.contains(key);
 }
