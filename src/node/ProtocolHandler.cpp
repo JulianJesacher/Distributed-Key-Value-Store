@@ -4,9 +4,9 @@
 
 namespace node::protocol {
 
-    metadata get_metadata(net::Connection& connection) {
-        metadata meta_data;
-        connection.receive(reinterpret_cast<char*>(&meta_data), sizeof(metadata));
+    MetaData get_metadata(net::Connection& connection) {
+        MetaData meta_data;
+        connection.receive(reinterpret_cast<char*>(&meta_data), sizeof(MetaData));
         return meta_data;
     }
 
@@ -36,4 +36,9 @@ namespace node::protocol {
         connection.receive(payload.data(), payload_size);
         return std::move(payload);
     }
+
+    void get_payload(net::Connection& connection, char* dest, uint64_t payload_size) {
+        connection.receive(dest, payload_size);
+    }
+
 }

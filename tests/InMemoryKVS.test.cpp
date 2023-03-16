@@ -9,7 +9,7 @@ std::string test_string = "ABCDEFGHI";
 int test_string_length = 1 + test_string.size();
 
 TEST_CASE("Test InMemoryKeyValueStore") {
-    InMemoryKVS kvs{};
+    key_value_store::InMemoryKVS kvs{};
 
     SUBCASE("Put") {
         ByteArray ba = ByteArray::new_allocated_byte_array(test_string);

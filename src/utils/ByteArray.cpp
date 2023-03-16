@@ -10,7 +10,7 @@ AllocatedByteArrayResource::AllocatedByteArrayResource(uint64_t size) {
 }
 
 // NOLINTNEXTLINE
-AllocatedByteArrayResource::AllocatedByteArrayResource(const char* data, uint64_t size, DeepCopyTag tag) : AllocatedByteArrayResource(size) {
+AllocatedByteArrayResource::AllocatedByteArrayResource(const char* data, uint64_t size, DeepCopyTag tag): AllocatedByteArrayResource(size) {
     memcpy(data_, data, size);
 }
 
@@ -70,16 +70,33 @@ ByteArray& ByteArray::operator=(ByteArray&& other) noexcept {
     return *this;
 }
 
+void ByteArray::insert_byte_array(const ByteArray& other, uint64_t offset) {
+    //If the ByteArray is too small to fit the other ByteArray, the size gets increased
+    if (offset + other.size() > size()) {
+        resource_ = std::make_shared<AllocatedByteArrayResource>(resource_->data(), size() + other.size(), IByteArrayResource::DeepCopyTag{});
+    }
+    memcpy(resource_->data() + offset, other.data(), other.size());
+}
+
+void ByteArray::resize(uint64_t target_size) {
+    if (size() >= target_size) {
+        return;
+    }
+    auto new_resource = std::make_shared<AllocatedByteArrayResource>(target_size);
+    memcpy(new_resource->data(), resource_->data(), size());
+    resource_ = std::move(new_resource);
+}
+
 ByteArray ByteArray::new_allocated_byte_array(char* data, uint64_t size) {
     ByteArray ba{};
     ba.resource_ = std::make_shared<AllocatedByteArrayResource>(data, size, IByteArrayResource::DeepCopyTag{});
-    return ba;
+    return std::move(ba);
 }
 
 ByteArray ByteArray::new_allocated_byte_array(uint64_t size) {
     ByteArray ba{};
     ba.resource_ = std::make_shared<AllocatedByteArrayResource>(size);
-    return ba;
+    return std::move(ba);
 }
 
 ByteArray ByteArray::new_allocated_byte_array(std::string& data) {

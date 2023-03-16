@@ -13,7 +13,7 @@
 using namespace  std::chrono_literals;
 
 TEST_CASE("Get Metadata") {
-    node::protocol::metadata m{1, node::protocol::Instruction::c_GET, 3, 4};
+    node::protocol::MetaData m{1, node::protocol::Instruction::c_GET, 3, 4};
     net::Socket socket{};
     int port{ 3000 };
 

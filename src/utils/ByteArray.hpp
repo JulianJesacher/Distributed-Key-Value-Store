@@ -50,8 +50,10 @@ class ByteArray {
 public:
 
     ByteArray() = default;
+
     ByteArray(const ByteArray& other) = default;
     ByteArray& operator=(const ByteArray& other) = default;
+
     ByteArray(ByteArray&& other) noexcept;
     ByteArray& operator=(ByteArray&& other) noexcept;
 
@@ -72,6 +74,9 @@ public:
     std::string to_string() const {
         return std::string(resource_->data(), resource_->size());
     }
+    void insert_byte_array(const ByteArray& other, uint64_t offset = 0);
+
+    void resize(uint64_t target_size);
 
 private:
     std::shared_ptr<IByteArrayResource> resource_;

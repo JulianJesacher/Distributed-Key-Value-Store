@@ -9,7 +9,8 @@ enum class StatusCode
     s_Ok = 0,
     s_NotFound = 1,
     s_NotSupported = 2,
-    s_InvalidArgument = 3
+    s_InvalidArgument = 3,
+    s_NotEnoughMemory = 4,
 };
 
 class Status
@@ -31,6 +32,10 @@ public:
         return Status(StatusCode::s_InvalidArgument, msg);
     }
 
+    static Status new_not_enough_memory(const ByteArray& msg) {
+        return Status(StatusCode::s_NotEnoughMemory, msg);
+    }
+
     bool is_ok() const {
         return errorCode_ == StatusCode::s_Ok;
     }
@@ -43,6 +48,9 @@ public:
     bool is_invalid_argument() const {
         return errorCode_ == StatusCode::s_InvalidArgument;
     };
+    bool is_not_enough_memory() const {
+        return errorCode_ == StatusCode::s_NotEnoughMemory;
+    }
 
     std::string get_msg() const {
         return errorMsg_;
