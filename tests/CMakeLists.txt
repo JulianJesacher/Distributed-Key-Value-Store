@@ -15,5 +15,5 @@ add_test(keyValueStoreTest KeyValueStore_l InMemoryKVS.test.cpp)
 #Networking Test
 add_test(networkingTest Networking_l Net.test.cpp)
 
-#Command Test
-add_test(instructionTest Node_l Instruction.test.cpp)
+#ProtocolHandler Test
+add_test(protocolHandlerTest Node_l ProtocolHandler.test.cpp NetworkingHelper.hpp)

@@ -32,8 +32,8 @@ target_include_directories(Networking_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 #Node library
 add_library(Node_l
-    node/Instruction.hpp
-    node/Instruction.cpp
+    node/ProtocolHandler.hpp
+    node/ProtocolHandler.cpp
     net/FileDescriptor.hpp
     net/FileDescriptor.cpp
     net/Socket.hpp
