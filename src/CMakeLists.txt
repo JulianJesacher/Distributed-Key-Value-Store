@@ -42,5 +42,7 @@ add_library(Node_l
     net/Connection.cpp
     client/Client.hpp
     client/Client.cpp
+    utils/ByteArray.hpp
+    utils/ByteArray.cpp
 )
 target_include_directories(Node_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

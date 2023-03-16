@@ -75,7 +75,7 @@ TEST_CASE("Get Commands") {
     auto parse_command = [&]() {
         socket.listen(port);
         net::Connection c = socket.accept();
-        return node::protocol::get_command(c, 3, command_size);
+        return node::protocol::get_command(c, 3, command_size, false);
     };
 
     auto received = std::async(parse_command);
@@ -87,4 +87,31 @@ TEST_CASE("Get Commands") {
     CHECK_EQ(received_data[0], arg1);
     CHECK_EQ(received_data[1], arg2);
     CHECK_EQ(received_data[2], arg3);
+}
+
+TEST_CASE("Get Payload") {
+    std::string payload{"This is a test payload!"};
+
+    net::Socket socket{};
+    int port{ 3000 };
+
+    auto send_command = [&]() {
+        networkingHelper::send(port, payload.data(), payload.size());
+    };
+
+    auto parse_byte_array = [&]() {
+        socket.listen(port);
+        net::Connection c = socket.accept();
+        return node::protocol::get_payload(c, payload.size());
+    };
+
+    auto received = std::async(parse_byte_array);
+    std::this_thread::sleep_for(100ms);
+    auto sent = std::async(send_command);
+
+    auto received_data = received.get();
+    auto expected_data = ByteArray::new_allocated_byte_array(payload);
+
+    CHECK_EQ(received_data.size(), expected_data.size());
+    CHECK(memcmp(received_data.data(), expected_data.data(), expected_data.size()) == 0);
 }

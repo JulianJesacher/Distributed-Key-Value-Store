@@ -3,6 +3,7 @@
 
 #include "../net/FileDescriptor.hpp"
 #include "../net/Connection.hpp"
+#include "../utils/ByteArray.hpp"
 
 namespace node {
 
@@ -27,7 +28,9 @@ namespace node {
 
         metadata get_metadata(net::Connection& connection);
 
-        command get_command(net::Connection& connection, uint16_t argc, uint64_t command_size);
+        command get_command(net::Connection& connection, uint16_t argc, uint64_t command_size, bool payload_exists = false);
+
+        ByteArray get_payload(net::Connection& connection, uint64_t payload_size);
     }
 }
 
