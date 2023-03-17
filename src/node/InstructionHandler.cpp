@@ -3,6 +3,7 @@
 
 using PutFields = node::protocol::CommandFieldsPut;
 using GetFields = node::protocol::CommandFieldsGet;
+using EraseFields = node::protocol::CommandFieldsErase;
 using Instruction = node::protocol::Instruction;
 
 namespace node::instruction_handler {
@@ -45,6 +46,18 @@ namespace node::instruction_handler {
 
         protocol::command response_command{std::to_string(value.size()), std::to_string(offset)};
         protocol::send_response(connection, response_command,
-                                Instruction::c_GET_RESPONSE, value.data() + offset, size);
+            Instruction::c_GET_RESPONSE, value.data() + offset, size);
+    }
+
+    void handle_erase(net::Connection& connection, const protocol::MetaData& metadata,
+        const protocol::command& command, key_value_store::IKeyValueStore& kvs) {
+        const std::string& key = command[to_integral(EraseFields::c_KEY)];
+        Status state = kvs.erase(key);
+
+        if(state.is_ok()){
+            protocol::send_response(connection, {}, Instruction::c_OK_RESPONSE);
+        } else {
+            protocol::send_response(connection, {}, Instruction::c_ERROR_RESPONSE, state.get_msg());
+        }
     }
 }
