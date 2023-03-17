@@ -11,8 +11,7 @@ Status InMemoryKVS::put(const std::string& key, const ByteArray& value, const Wr
 // NOLINTNEXTLINE
 Status InMemoryKVS::get(const std::string& key, ByteArray& value, const ReadOptions& options) const noexcept {
     if (!mapping_.contains(key)) {
-        std::string error_msg{"The given key was not found"};
-        return Status::new_not_found(ByteArray::new_allocated_byte_array(error_msg));
+        return Status::new_not_found("The given key was not found");
     }
 
     value = mapping_.at(key);
@@ -22,8 +21,7 @@ Status InMemoryKVS::get(const std::string& key, ByteArray& value, const ReadOpti
 // NOLINTNEXTLINE
 Status InMemoryKVS::erase(const std::string& key, const WriteOptions& options) noexcept {
     if (!mapping_.contains(key)) {
-        std::string error_msg{"The given key was not found"};
-        return Status::new_not_found(ByteArray::new_allocated_byte_array(error_msg));
+        return Status::new_not_found("The given key was not found");
     }
 
     mapping_.erase(key);

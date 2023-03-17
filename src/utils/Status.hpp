@@ -20,19 +20,19 @@ public:
         return Status();
     };
 
-    static Status new_not_found(const ByteArray& msg) {
+    static Status new_not_found(const std::string& msg) {
         return Status(StatusCode::s_NotFound, msg);
     }
 
-    static Status new_not_supported(const ByteArray& msg) {
+    static Status new_not_supported(const std::string& msg) {
         return Status(StatusCode::s_NotSupported, msg);
     }
 
-    static Status new_invalid_argument(const ByteArray& msg) {
+    static Status new_invalid_argument(const std::string& msg) {
         return Status(StatusCode::s_InvalidArgument, msg);
     }
 
-    static Status new_not_enough_memory(const ByteArray& msg) {
+    static Status new_not_enough_memory(const std::string& msg) {
         return Status(StatusCode::s_NotEnoughMemory, msg);
     }
 
@@ -58,7 +58,7 @@ public:
 
 private:
     Status() noexcept;
-    Status(StatusCode code, const ByteArray& msg);
+    Status(StatusCode code, const std::string& msg);
 
     StatusCode errorCode_;
     std::string errorMsg_;

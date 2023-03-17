@@ -8,8 +8,8 @@ Status::Status() noexcept
     errorMsg_ = "";
 }
 
-Status::Status(StatusCode code, const ByteArray& msg)
+Status::Status(StatusCode code, const std::string& msg)
 {
     errorCode_ = code;
-    errorMsg_ = msg.to_string();
+    errorMsg_ = msg;
 }
