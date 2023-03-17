@@ -22,13 +22,14 @@ namespace node {
             c_PUT = 0,
             c_GET = 1,
             c_REMOVE = 2,
+            c_GET_RESPONSE = 3,
         };
 
         struct MetaData {
             uint16_t argc;
             Instruction instruction;
             uint64_t command_size;
-            uint64_t payload_size;
+            uint64_t payload_size; //TODO: Why not in the command?
         };
 
         enum class CommandFieldsPut {
@@ -40,6 +41,13 @@ namespace node {
 
         enum class CommandFieldsGet {
             c_KEY = 0,
+            c_SIZE = 1, //Size 0 means get the entire value
+            c_OFFSET = 2,
+        };
+
+        enum class CommandFieldsGetResponse {
+            c_SIZE = 0,
+            c_OFFSET = 1,
         };
 
         enum class CommandFieldsRemove {
@@ -50,13 +58,20 @@ namespace node {
 
         MetaData get_metadata(net::Connection& connection);
 
-        command get_command(net::Connection& connection, uint16_t argc, uint64_t command_size, bool payload_exists = false);
+        command get_command(net::Connection& connection, uint16_t argc, uint64_t command_size);
 
         ByteArray get_payload(net::Connection& connection, uint64_t payload_size);
 
         void get_payload(net::Connection& connection, char* dest, uint64_t payload_size);
 
         void get_payload(net::Connection& connection, char* dest, uint64_t payload_size);
+
+        void send_response(net::Connection& connection, const command& command, Instruction i,
+            const char* payload = nullptr, uint64_t payload_size = 0);
+
+        uint64_t get_command_size(const command& command);
+
+        void serialize_command(const command& command, std::span<char> buf);
     }
 }
 
