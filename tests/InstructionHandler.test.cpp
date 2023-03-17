@@ -146,9 +146,68 @@ TEST_CASE("Test get") {
     CHECK_EQ(5, actual_metadata.payload_size);
 
     //Check command
+    CHECK_EQ(2, actual_command.size());
     CHECK_EQ("5", actual_command[0]);
     CHECK_EQ("0", actual_command[1]);
 
     //Check payload
     CHECK_EQ(expected_payload, actual_payload.to_string());
+}
+
+
+TEST_CASE("Test erase"){
+    key_value_store::InMemoryKVS kvs{};
+    int port{ 3000 };
+
+    //ERASE key:"key"
+    //Metadata: argc:1 instruction:ERASE command_size:0 payload_size:0
+    //command: arg1: key arg1Len: 3
+    std::string key{ "key" };
+    protocol::command sent_command{"key"};
+    auto [command_data, m] = get_command(protocol::Instruction::c_ERASE, sent_command);
+
+    auto send_command = [&]() {
+        net::Socket client{};
+        net::Connection c = client.connect(port);
+
+        auto metadata = protocol::get_metadata(c);
+        auto command = protocol::get_command(c, 0, metadata.command_size);
+        ByteArray payload = protocol::get_payload(c, metadata.payload_size);
+
+        return std::make_tuple(metadata, command, payload);
+    };
+
+    auto process_command = [&]() {
+        net::Socket server{};
+        if (!net::is_listening(server.fd())) {
+            server.listen(port);
+        }
+        net::Connection c = server.accept();
+        instruction_handler::handle_erase(c, m, sent_command, kvs);
+    };
+
+    //TODO: Check for correct error when not found
+
+    ByteArray value = ByteArray::new_allocated_byte_array("value");
+    kvs.put(key, value);
+    auto processed = std::async(process_command);
+    std::this_thread::sleep_for(100ms);
+    auto sent = std::async(send_command);
+
+    processed.get();
+    auto [actual_metadata, actual_command, actual_payload] = sent.get();
+
+    CHECK_EQ(kvs.get_size(), 0);
+    
+    //Check metadata
+    CHECK_EQ(0, actual_metadata.argc);
+    CHECK_EQ(protocol::Instruction::c_OK_RESPONSE, actual_metadata.instruction);
+    CHECK_EQ(0, actual_metadata.command_size);
+    CHECK_EQ(0, actual_metadata.payload_size);
+
+    //Check command
+    CHECK_EQ(0, actual_command.size());
+
+    //Check payload
+    CHECK_EQ(0, actual_payload.size());
 }
