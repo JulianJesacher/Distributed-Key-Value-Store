@@ -12,6 +12,10 @@ namespace node::protocol {
     }
 
     command get_command(net::Connection& connection, uint16_t argc, uint64_t command_size) {
+        if(argc==0 || command_size == 0){
+            return {};
+        }
+
         char buf[command_size];
         std::span<char> received_data(buf, command_size);
         connection.receive(received_data);
@@ -53,6 +57,10 @@ namespace node::protocol {
         if (payload != nullptr && payload_size > 0) {
             connection.send(payload, payload_size);
         }
+    }
+
+    void send_response(net::Connection& connection, const command& command, Instruction i, const std::string& payload) {
+        send_response(connection, command, i, payload.data(), payload.size());
     }
 
     uint64_t get_command_size(const command& command) {
