@@ -15,6 +15,7 @@ public:
     virtual char* data() = 0;
     virtual const char* data() const = 0;
     virtual uint64_t size() const = 0;
+    virtual void resize(uint64_t target_size) = 0;
 };
 
 class AllocatedByteArrayResource: public IByteArrayResource {
@@ -40,6 +41,8 @@ public:
     uint64_t size() const override {
         return size_;
     };
+    
+    void resize(uint64_t target_size) override;
 
 private:
     char* data_;

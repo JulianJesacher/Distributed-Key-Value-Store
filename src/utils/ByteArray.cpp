@@ -55,6 +55,18 @@ AllocatedByteArrayResource::~AllocatedByteArrayResource() {
     delete[] data_;
 }
 
+void AllocatedByteArrayResource::resize(uint64_t target_size) {
+    if (size_ >= target_size) {
+        return;
+    }
+
+    char* new_data = new char[target_size];
+    memcpy(new_data, data_, std::min(target_size, size_));
+    delete[] data_;
+    data_ = new_data;
+    size_ = target_size;
+}
+
 //ByteArray
 ByteArray::ByteArray(ByteArray&& other) noexcept {
     resource_ = std::move(other.resource_);
@@ -79,12 +91,7 @@ void ByteArray::insert_byte_array(const ByteArray& other, uint64_t offset) {
 }
 
 void ByteArray::resize(uint64_t target_size) {
-    if (size() >= target_size) {
-        return;
-    }
-    auto new_resource = std::make_shared<AllocatedByteArrayResource>(target_size);
-    memcpy(new_resource->data(), resource_->data(), size());
-    resource_ = std::move(new_resource);
+    resource_->resize(target_size);
 }
 
 ByteArray ByteArray::new_allocated_byte_array(char* data, uint64_t size) {

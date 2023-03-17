@@ -23,7 +23,8 @@ namespace node::instruction_handler {
             return;
         }
 
-        ByteArray& existing = kvs.get(key);
+        ByteArray existing{};
+        kvs.get(key, existing);
         existing.resize(total_payload_size);
         protocol::get_payload(connection, existing.data() + offset, cur_payload_size);
     }
