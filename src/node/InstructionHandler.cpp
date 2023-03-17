@@ -2,6 +2,8 @@
 #include "ProtocolHandler.hpp"
 
 using PutFields = node::protocol::CommandFieldsPut;
+using GetFields = node::protocol::CommandFieldsGet;
+using Instruction = node::protocol::Instruction;
 
 namespace node::instruction_handler {
 
@@ -27,5 +29,22 @@ namespace node::instruction_handler {
         kvs.get(key, existing);
         existing.resize(total_payload_size);
         protocol::get_payload(connection, existing.data() + offset, cur_payload_size);
+    }
+
+    void handle_get(net::Connection& connection, const protocol::MetaData& meta_data,
+        const protocol::command& command, key_value_store::IKeyValueStore& kvs) {
+        const std::string& key = command[to_integral(GetFields::c_KEY)];
+        uint64_t size = std::stoull(command[to_integral(GetFields::c_SIZE)]);
+        uint64_t offset = std::stoull(command[to_integral(GetFields::c_OFFSET)]);
+
+        ByteArray value{};
+        Status state = kvs.get(key, value);
+        if (!state.is_ok()) {
+            //TODO: handle error
+        }
+
+        protocol::command response_command{std::to_string(value.size()), std::to_string(offset)};
+        protocol::send_response(connection, response_command,
+                                Instruction::c_GET_RESPONSE, value.data() + offset, size);
     }
 }
