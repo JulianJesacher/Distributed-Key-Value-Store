@@ -21,7 +21,7 @@ namespace node::instruction_handler {
             protocol::get_payload(connection, payload.data(), cur_payload_size);
             Status state = kvs.put(key, payload);
             if (!state.is_ok()) {
-                //TODO: handle error
+                protocol::send_response(connection, {}, Instruction::c_ERROR_RESPONSE, state.get_msg());
             }
             return;
         }
@@ -41,7 +41,8 @@ namespace node::instruction_handler {
         ByteArray value{};
         Status state = kvs.get(key, value);
         if (!state.is_ok()) {
-            //TODO: handle error
+            protocol::send_response(connection, {}, Instruction::c_ERROR_RESPONSE, state.get_msg());
+            return;
         }
 
         protocol::command response_command{std::to_string(value.size()), std::to_string(offset)};
@@ -54,9 +55,10 @@ namespace node::instruction_handler {
         const std::string& key = command[to_integral(EraseFields::c_KEY)];
         Status state = kvs.erase(key);
 
-        if(state.is_ok()){
+        if (state.is_ok()) {
             protocol::send_response(connection, {}, Instruction::c_OK_RESPONSE);
-        } else {
+        }
+        else {
             protocol::send_response(connection, {}, Instruction::c_ERROR_RESPONSE, state.get_msg());
         }
     }

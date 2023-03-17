@@ -127,35 +127,56 @@ TEST_CASE("Test get") {
     };
 
     //TODO: Check for correct error when not found
-
-    ByteArray value = ByteArray::new_allocated_byte_array("value");
-    kvs.put(key, value);
-
+    //Check for error when not found
     auto processed = std::async(process_command);
     std::this_thread::sleep_for(100ms);
     auto sent = std::async(send_command);
 
     processed.get();
     auto [actual_metadata, actual_command, actual_payload] = sent.get();
+
+    CHECK_EQ(0, actual_metadata.argc);
+    CHECK_EQ(protocol::Instruction::c_ERROR_RESPONSE, actual_metadata.instruction);
+    CHECK_EQ(0, actual_metadata.command_size);
+    CHECK_EQ(27, actual_metadata.payload_size);
+
+    //Check command
+    CHECK_EQ(0, actual_command.size());
+
+    //Check payload
+    CHECK_EQ(27, actual_payload.size());
+    CHECK_EQ("The given key was not found", actual_payload.to_string());
+
+
+    //Check for correct response when found
+    ByteArray value = ByteArray::new_allocated_byte_array("value");
+    kvs.put(key, value);
+
+    processed = std::async(process_command);
+    std::this_thread::sleep_for(100ms);
+    sent = std::async(send_command);
+
+    processed.get();
+    auto [actual_metadata_2, actual_command_2, actual_payload_2] = sent.get();
     std::string expected_payload{ "value" };
 
     //Check metadata
-    CHECK_EQ(2, actual_metadata.argc);
-    CHECK_EQ(protocol::Instruction::c_GET_RESPONSE, actual_metadata.instruction);
-    CHECK_EQ(18, actual_metadata.command_size);
-    CHECK_EQ(5, actual_metadata.payload_size);
+    CHECK_EQ(2, actual_metadata_2.argc);
+    CHECK_EQ(protocol::Instruction::c_GET_RESPONSE, actual_metadata_2.instruction);
+    CHECK_EQ(18, actual_metadata_2.command_size);
+    CHECK_EQ(5, actual_metadata_2.payload_size);
 
     //Check command
-    CHECK_EQ(2, actual_command.size());
-    CHECK_EQ("5", actual_command[0]);
-    CHECK_EQ("0", actual_command[1]);
+    CHECK_EQ(2, actual_command_2.size());
+    CHECK_EQ("5", actual_command_2[0]);
+    CHECK_EQ("0", actual_command_2[1]);
 
     //Check payload
-    CHECK_EQ(expected_payload, actual_payload.to_string());
+    CHECK_EQ(expected_payload, actual_payload_2.to_string());
 }
 
 
-TEST_CASE("Test erase"){
+TEST_CASE("Test erase") {
     key_value_store::InMemoryKVS kvs{};
     int port{ 3000 };
 
@@ -186,10 +207,7 @@ TEST_CASE("Test erase"){
         instruction_handler::handle_erase(c, m, sent_command, kvs);
     };
 
-    //TODO: Check for correct error when not found
-
-    ByteArray value = ByteArray::new_allocated_byte_array("value");
-    kvs.put(key, value);
+    //Check for error when not found
     auto processed = std::async(process_command);
     std::this_thread::sleep_for(100ms);
     auto sent = std::async(send_command);
@@ -197,17 +215,41 @@ TEST_CASE("Test erase"){
     processed.get();
     auto [actual_metadata, actual_command, actual_payload] = sent.get();
 
-    CHECK_EQ(kvs.get_size(), 0);
-    
     //Check metadata
     CHECK_EQ(0, actual_metadata.argc);
-    CHECK_EQ(protocol::Instruction::c_OK_RESPONSE, actual_metadata.instruction);
+    CHECK_EQ(protocol::Instruction::c_ERROR_RESPONSE, actual_metadata.instruction);
     CHECK_EQ(0, actual_metadata.command_size);
-    CHECK_EQ(0, actual_metadata.payload_size);
+    CHECK_EQ(27, actual_metadata.payload_size);
 
     //Check command
     CHECK_EQ(0, actual_command.size());
 
     //Check payload
-    CHECK_EQ(0, actual_payload.size());
+    CHECK_EQ(27, actual_payload.size());
+    CHECK_EQ("The given key was not found", actual_payload.to_string());
+
+
+    //Check for correct response when found
+    ByteArray value = ByteArray::new_allocated_byte_array("value");
+    kvs.put(key, value);
+    processed = std::async(process_command);
+    std::this_thread::sleep_for(100ms);
+    sent = std::async(send_command);
+
+    processed.get();
+    auto [actual_metadata_2, actual_command_2, actual_payload_2] = sent.get();
+
+    CHECK_EQ(0, kvs.get_size());
+
+    //Check metadata
+    CHECK_EQ(0, actual_metadata_2.argc);
+    CHECK_EQ(protocol::Instruction::c_OK_RESPONSE, actual_metadata_2.instruction);
+    CHECK_EQ(0, actual_metadata_2.command_size);
+    CHECK_EQ(0, actual_metadata_2.payload_size);
+
+    //Check command
+    CHECK_EQ(0, actual_command_2.size());
+
+    //Check payload
+    CHECK_EQ(0, actual_payload_2.size());
 }
