@@ -41,7 +41,7 @@ namespace node::protocol {
         connection.receive(dest, payload_size);
     }
 
-    void send_response(net::Connection& connection, const command& command, Instruction i, const char* payload, uint64_t payload_size) {
+    void send_instruction(net::Connection& connection, const command& command, Instruction i, const char* payload, uint64_t payload_size) {
         uint64_t command_size = get_command_size(command);
         MetaData meta_data{ static_cast<uint16_t>(command.size()), i, command_size, payload_size };
 
@@ -59,18 +59,18 @@ namespace node::protocol {
         }
     }
 
-    void send_response(net::Connection& connection, const  Status& state) {
+    void send_instruction(net::Connection& connection, const  Status& state) {
         if (state.is_ok()) {
-            send_response(connection, {}, Instruction::c_OK_RESPONSE);
+            send_instruction(connection, {}, Instruction::c_OK_RESPONSE);
             return;
         }
 
         const std::string& error_msg = state.get_msg();
-        send_response(connection, { }, Instruction::c_ERROR_RESPONSE, error_msg);
+        send_instruction(connection, { }, Instruction::c_ERROR_RESPONSE, error_msg);
     }
 
-    void send_response(net::Connection& connection, const command& command, Instruction i, const std::string& payload) {
-        send_response(connection, command, i, payload.data(), payload.size());
+    void send_instruction(net::Connection& connection, const command& command, Instruction i, const std::string& payload) {
+        send_instruction(connection, command, i, payload.data(), payload.size());
     }
 
     uint64_t get_command_size(const command& command) {

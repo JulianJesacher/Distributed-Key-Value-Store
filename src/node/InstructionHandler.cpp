@@ -37,7 +37,7 @@ namespace node::instruction_handler {
         const protocol::command& command, key_value_store::IKeyValueStore& kvs) {
         Status argc_state = check_argc(command, Instruction::c_PUT);
         if (!argc_state.is_ok()) {
-            protocol::send_response(connection, {}, Instruction::c_ERROR_RESPONSE, argc_state.get_msg());
+            protocol::send_instruction(connection, {}, Instruction::c_ERROR_RESPONSE, argc_state.get_msg());
             return;
         }
 
@@ -52,7 +52,7 @@ namespace node::instruction_handler {
             protocol::get_payload(connection, payload.data(), cur_payload_size);
 
             Status state = kvs.put(key, payload);
-            protocol::send_response(connection, state);
+            protocol::send_instruction(connection, state);
             return;
         }
 
@@ -63,14 +63,14 @@ namespace node::instruction_handler {
         //Store the new payload in the existing payload
         protocol::get_payload(connection, existing.data() + offset, cur_payload_size);
 
-        protocol::send_response(connection, state);
+        protocol::send_instruction(connection, state);
     }
 
     void handle_get(net::Connection& connection, const protocol::MetaData& meta_data,
         const protocol::command& command, key_value_store::IKeyValueStore& kvs) {
         Status argc_state = check_argc(command, Instruction::c_GET);
         if (!argc_state.is_ok()) {
-            protocol::send_response(connection, argc_state);
+            protocol::send_instruction(connection, argc_state);
             return;
         }
 
@@ -81,12 +81,12 @@ namespace node::instruction_handler {
         ByteArray value{};
         Status state = kvs.get(key, value);
         if (!state.is_ok()) {
-            protocol::send_response(connection, state);
+            protocol::send_instruction(connection, state);
             return;
         }
 
         protocol::command response_command{std::to_string(value.size()), std::to_string(offset)};
-        protocol::send_response(connection, response_command,
+        protocol::send_instruction(connection, response_command,
             Instruction::c_GET_RESPONSE, value.data() + offset, size);
     }
 
@@ -94,12 +94,12 @@ namespace node::instruction_handler {
         const protocol::command& command, key_value_store::IKeyValueStore& kvs) {
         Status argc_state = check_argc(command, Instruction::c_ERASE);
         if (!argc_state.is_ok()) {
-            protocol::send_response(connection, argc_state);
+            protocol::send_instruction(connection, argc_state);
             return;
         }
 
         const std::string& key = command[to_integral(EraseFields::c_KEY)];
         Status state = kvs.erase(key);
-        protocol::send_response(connection, state);
+        protocol::send_instruction(connection, state);
     }
 }

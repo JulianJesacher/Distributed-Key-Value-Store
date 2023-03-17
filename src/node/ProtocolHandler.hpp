@@ -74,12 +74,12 @@ namespace node {
 
         void get_payload(net::Connection& connection, char* dest, uint64_t payload_size);
 
-        void send_response(net::Connection& connection, const command& command, Instruction i,
+        void send_instruction(net::Connection& connection, const command& command, Instruction i,
             const char* payload = nullptr, uint64_t payload_size = 0);
 
-        void send_response(net::Connection& connection, const  Status& state);
+        void send_instruction(net::Connection& connection, const  Status& state);
 
-        void send_response(net::Connection& connection, const command& command, Instruction i, const std::string& payload);
+        void send_instruction(net::Connection& connection, const command& command, Instruction i, const std::string& payload);
 
         uint64_t get_command_size(const command& command);
 
