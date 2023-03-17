@@ -39,6 +39,10 @@ namespace net {
         return net::send(fd_.unwrap(), data, size);
     }
 
+    ssize_t Connection::send(std::span<const char> data) {
+        return net::send(fd_.unwrap(), data);
+    }
+
     ssize_t Connection::receive_all(std::ostream& stream) const {
         char buf[net::receive_all_buffer_size];
         std::span<char> data(buf, net::receive_all_buffer_size);

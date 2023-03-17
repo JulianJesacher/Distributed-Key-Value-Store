@@ -27,6 +27,7 @@ namespace net {
 
         ssize_t send(const std::string& data);
         ssize_t send(const char* data, uint64_t size);
+        ssize_t send(std::span<const char> data);
 
         ssize_t receive_all(std::ostream& stream) const;
         ssize_t receive(char* data, uint64_t size) const;

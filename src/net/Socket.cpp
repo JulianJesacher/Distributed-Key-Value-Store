@@ -24,8 +24,8 @@ namespace net {
         }
 
         //Set socket option to bind to the same port after terminating without waiting
-        int so_reuseaddr = 1;
-        if (setsockopt(fd_.unwrap(), SOL_SOCKET, SO_REUSEADDR, &so_reuseaddr, sizeof(so_reuseaddr))) {
+        int true_flag = 1;
+        if (setsockopt(fd_.unwrap(), SOL_SOCKET, SO_REUSEADDR, &true_flag, sizeof(true_flag))) {
             throw std::runtime_error("error setting SO_REUSEADDR for socket: " + std::to_string(errno));
         }
     }
@@ -74,7 +74,7 @@ namespace net {
     }
 
     Connection Socket::connect(uint16_t port) {
-        return connect("localhost", port);
+        return connect("127.0.0.1", port);
     }
 
     int Socket::fd() const {
