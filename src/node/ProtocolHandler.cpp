@@ -12,7 +12,7 @@ namespace node::protocol {
     }
 
     command get_command(net::Connection& connection, uint16_t argc, uint64_t command_size) {
-        if(argc==0 || command_size == 0){
+        if (argc == 0 || command_size == 0) {
             return {};
         }
 
@@ -57,6 +57,16 @@ namespace node::protocol {
         if (payload != nullptr && payload_size > 0) {
             connection.send(payload, payload_size);
         }
+    }
+
+    void send_response(net::Connection& connection, const  Status& state) {
+        if (state.is_ok()) {
+            send_response(connection, {}, Instruction::c_OK_RESPONSE);
+            return;
+        }
+
+        const std::string& error_msg = state.get_msg();
+        send_response(connection, { }, Instruction::c_ERROR_RESPONSE, error_msg);
     }
 
     void send_response(net::Connection& connection, const command& command, Instruction i, const std::string& payload) {

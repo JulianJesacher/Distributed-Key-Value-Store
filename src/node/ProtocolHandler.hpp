@@ -6,6 +6,7 @@
 #include "../net/FileDescriptor.hpp"
 #include "../net/Connection.hpp"
 #include "../utils/ByteArray.hpp"
+#include "../utils/Status.hpp"
 
 namespace node {
 
@@ -25,6 +26,7 @@ namespace node {
             c_GET_RESPONSE = 3,
             c_OK_RESPONSE = 4,
             c_ERROR_RESPONSE = 5,
+            enum_size = 3
         };
 
         struct MetaData {
@@ -39,21 +41,25 @@ namespace node {
             c_CUR_PAYLOAD_SIZE = 1,
             c_OFFSET = 2,
             //No value since that is stored directly in the byte array and not as part of the commands
+            enum_size = 3
         };
 
         enum class CommandFieldsGet {
             c_KEY = 0,
             c_SIZE = 1, //Size 0 means get the entire value
             c_OFFSET = 2,
+            enum_size = 3
         };
 
         enum class CommandFieldsGetResponse {
             c_SIZE = 0,
             c_OFFSET = 1,
+            enum_size = 2
         };
 
         enum class CommandFieldsErase {
             c_KEY = 0,
+            enum_size = 1
         };
 
         using command = std::vector<std::string>;
@@ -70,6 +76,8 @@ namespace node {
 
         void send_response(net::Connection& connection, const command& command, Instruction i,
             const char* payload = nullptr, uint64_t payload_size = 0);
+
+        void send_response(net::Connection& connection, const  Status& state);
 
         void send_response(net::Connection& connection, const command& command, Instruction i, const std::string& payload);
 
