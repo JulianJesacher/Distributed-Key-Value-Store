@@ -75,7 +75,7 @@ TEST_CASE("Get Commands") {
     auto parse_command = [&]() {
         socket.listen(port);
         net::Connection c = socket.accept();
-        return node::protocol::get_command(c, 3, command_size, false);
+        return node::protocol::get_command(c, 3, command_size);
     };
 
     auto received = std::async(parse_command);
