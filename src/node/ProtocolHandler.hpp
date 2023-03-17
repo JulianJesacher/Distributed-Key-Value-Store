@@ -21,8 +21,10 @@ namespace node {
         enum class Instruction: uint16_t {
             c_PUT = 0,
             c_GET = 1,
-            c_REMOVE = 2,
+            c_ERASE = 2,
             c_GET_RESPONSE = 3,
+            c_OK_RESPONSE = 4,
+            c_ERROR_RESPONSE = 5,
         };
 
         struct MetaData {
@@ -50,7 +52,7 @@ namespace node {
             c_OFFSET = 1,
         };
 
-        enum class CommandFieldsRemove {
+        enum class CommandFieldsErase {
             c_KEY = 0,
         };
 
@@ -68,6 +70,8 @@ namespace node {
 
         void send_response(net::Connection& connection, const command& command, Instruction i,
             const char* payload = nullptr, uint64_t payload_size = 0);
+
+        void send_response(net::Connection& connection, const command& command, Instruction i, const std::string& payload);
 
         uint64_t get_command_size(const command& command);
 

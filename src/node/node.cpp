@@ -9,7 +9,7 @@ namespace node {
             break;
         case Instruction::c_GET:
             break;
-        case Instruction::c_REMOVE:
+        case Instruction::c_ERASE:
             break;
         default:
         }
