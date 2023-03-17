@@ -33,29 +33,27 @@ std::pair<std::string, protocol::MetaData> get_command(protocol::Instruction i,
 }
 
 TEST_CASE("Test put") {
+    //Test return value
     key_value_store::InMemoryKVS kvs{};
     ByteArray ba{};
     Status st = kvs.get("key", ba);
     CHECK_EQ(kvs.get_size(), 0);
     CHECK(st.is_not_found());
-
     int port{ 3000 };
-
-    //PUT key:"key" payload_size:4 offset:0 "value"
-    //Metadata: argc:3 instruction:PUT command_size:17 payload_size:4
-    //Command: arg1: key arg1Len: 3 arg2: 5 arg2Len: 1 arg3: 0 arg3Len: 1
-    std::string key{ "key" }, value{ "value" };
-    protocol::command command{"key", "5", "0"};
-    auto [command_data, m] = get_command(protocol::Instruction::c_PUT, command, value);
 
     auto send_command = [&](std::string v) {
         net::Socket client{};
         net::Connection c = client.connect(port);
-        //send the payload
         c.send(v.c_str(), v.size());
+
+        auto metadata = protocol::get_metadata(c);
+        auto command = protocol::get_command(c, 0, metadata.command_size);
+        ByteArray payload = protocol::get_payload(c, metadata.payload_size);
+
+        return std::make_tuple(metadata, command, payload);
     };
 
-    auto process_command = [&](protocol::MetaData meta_data) {
+    auto process_command = [&](protocol::command command, protocol::MetaData meta_data) {
         net::Socket server{};
         if (!net::is_listening(server.fd())) {
             server.listen(port);
@@ -64,47 +62,88 @@ TEST_CASE("Test put") {
         instruction_handler::handle_put(c, meta_data, command, kvs);
     };
 
-    auto processed = std::async(process_command, m);
-    std::this_thread::sleep_for(100ms);
-    auto sent = std::async(send_command, value);
+    SUBCASE("Insert first time") {
+        //PUT key:"key" payload_size:4 offset:0 "value"
+        //Metadata: argc:3 instruction:PUT command_size:17 payload_size:4
+        //Command: arg1: key arg1Len: 3 arg2: 5 arg2Len: 1 arg3: 0 arg3Len: 1
 
-    processed.get();
-    sent.get();
+        std::string key{ "key" }, value{ "value" };
+        protocol::command command{"key", "5", "0"};
+        auto [_, meta_data] = get_command(protocol::Instruction::c_PUT, command, value);
+        auto processed = std::async(process_command, command, meta_data);
+        std::this_thread::sleep_for(100ms);
+        auto sent = std::async(send_command, value);
 
-    CHECK_EQ(kvs.get_size(), 1);
-    kvs.get("key", ba);
-    CHECK_EQ(value, ba.to_string());
+        processed.get();
+        auto [actual_metadata, actual_command, actual_payload] = sent.get();
+
+        //Check kvs state
+        CHECK_EQ(kvs.get_size(), 1);
+        kvs.get("key", ba);
+        CHECK_EQ(value, ba.to_string());
+
+        //Check response:
+        //Check metadata
+        CHECK_EQ(0, actual_metadata.argc);
+        CHECK_EQ(protocol::Instruction::c_OK_RESPONSE, actual_metadata.instruction);
+        CHECK_EQ(0, actual_metadata.command_size);
+        CHECK_EQ(0, actual_metadata.payload_size);
+
+        //Check command
+        CHECK_EQ(0, actual_command.size());
+
+        //Check payload
+        CHECK_EQ(0, actual_payload.size());
+    }
 
 
-    //Increase size of underlying buffer array test, with offset
-    value = "valuevaluevalue";
-    command = protocol::command{ "key", "15", "5" };
-    auto [command_data2, m2] = get_command(protocol::Instruction::c_PUT, command, value);
-    m2.payload_size = 20;
+    SUBCASE("Increase size of underlying buffer with offset") {
+        //PUT key:"key" payload_size:15 offset:5 "valuevaluevalue"
+        //Metadata: argc:3 instruction:PUT command_size:18 payload_size:20
+        //Command: arg1: key arg1Len: 3 arg2: 15 arg2Len: 2 arg3: 5 arg3Len: 1
 
-    processed = std::async(process_command, m2);
-    std::this_thread::sleep_for(100ms);
-    sent = std::async(send_command, value);
+        //Prepare kvs
+        std::string key{ "key" }, value{ "valuevaluevalue" };
+        ByteArray ba = ByteArray::new_allocated_byte_array("value");
+        kvs.put(key, ba);
 
-    processed.get();
-    sent.get();
+        //Increase size of underlying buffer array test, with offset
+        protocol::command command{ "key", "15", "5" };
+        auto [_, meta_data] = get_command(protocol::Instruction::c_PUT, command, value);
+        meta_data.payload_size = 20;
+        auto processed = std::async(process_command, command, meta_data);
+        std::this_thread::sleep_for(100ms);
+        auto sent = std::async(send_command, value);
 
-    CHECK_EQ(kvs.get_size(), 1);
-    kvs.get("key", ba);
-    CHECK_EQ("valuevaluevaluevalue", ba.to_string());
+        processed.get();
+        auto [actual_metadata, actual_command, actual_payload] = sent.get();
+
+        //Check kvs state
+        CHECK_EQ(kvs.get_size(), 1);
+        kvs.get("key", ba);
+        CHECK_EQ("valuevaluevaluevalue", ba.to_string());
+
+        //Check response:
+        //Check metadata
+        CHECK_EQ(0, actual_metadata.argc);
+        CHECK_EQ(protocol::Instruction::c_OK_RESPONSE, actual_metadata.instruction);
+        CHECK_EQ(0, actual_metadata.command_size);
+        CHECK_EQ(0, actual_metadata.payload_size);
+
+        //Check command
+        CHECK_EQ(0, actual_command.size());
+
+        //Check payload
+        CHECK_EQ(0, actual_payload.size());
+    }
 }
 
 
 TEST_CASE("Test get") {
     key_value_store::InMemoryKVS kvs{};
     int port{ 3000 };
-
-    //GET key:"key" size:"5" offset:"0"
-    //Metadata: argc:3 instruction:GET command_size:17 payload_size:0
-    //Command: arg1: key arg1Len: 3 arg2: 5 arg2Len: 1 arg3: 0 arg3Len: 1
     std::string key{ "key" };
     protocol::command sent_command{"key", "5", "0"};
-    auto [command_data, m] = get_command(protocol::Instruction::c_GET, sent_command);
 
     auto send_command = [&]() {
         net::Socket client{};
@@ -117,75 +156,82 @@ TEST_CASE("Test get") {
         return std::make_tuple(metadata, command, payload);
     };
 
-    auto process_command = [&]() {
+    auto process_command = [&](protocol::command command, protocol::MetaData meta_data) {
         net::Socket server{};
         if (!net::is_listening(server.fd())) {
             server.listen(port);
         }
         net::Connection c = server.accept();
-        instruction_handler::handle_get(c, m, sent_command, kvs);
+        instruction_handler::handle_get(c, meta_data, command, kvs);
     };
 
-    //TODO: Check for correct error when not found
-    //Check for error when not found
-    auto processed = std::async(process_command);
-    std::this_thread::sleep_for(100ms);
-    auto sent = std::async(send_command);
 
-    processed.get();
-    auto [actual_metadata, actual_command, actual_payload] = sent.get();
+    SUBCASE("Check for error when not found") {
+        //GET key:"key" size:"5" offset:"0"
+        //Metadata: argc:3 instruction:GET command_size:17 payload_size:0
+        //Command: arg1: key arg1Len: 3 arg2: 5 arg2Len: 1 arg3: 0 arg3Len: 1
 
-    CHECK_EQ(0, actual_metadata.argc);
-    CHECK_EQ(protocol::Instruction::c_ERROR_RESPONSE, actual_metadata.instruction);
-    CHECK_EQ(0, actual_metadata.command_size);
-    CHECK_EQ(27, actual_metadata.payload_size);
+        auto [_, meta_data] = get_command(protocol::Instruction::c_GET, sent_command);
+        auto processed = std::async(process_command, sent_command, meta_data);
+        std::this_thread::sleep_for(100ms);
+        auto sent = std::async(send_command);
+        processed.get();
+        auto [actual_metadata, actual_command, actual_payload] = sent.get();
 
-    //Check command
-    CHECK_EQ(0, actual_command.size());
+        //Check metadata
+        CHECK_EQ(0, actual_metadata.argc);
+        CHECK_EQ(protocol::Instruction::c_ERROR_RESPONSE, actual_metadata.instruction);
+        CHECK_EQ(0, actual_metadata.command_size);
+        CHECK_EQ(27, actual_metadata.payload_size);
 
-    //Check payload
-    CHECK_EQ(27, actual_payload.size());
-    CHECK_EQ("The given key was not found", actual_payload.to_string());
+        //Check command
+        CHECK_EQ(0, actual_command.size());
+
+        //Check payload
+        CHECK_EQ(27, actual_payload.size());
+        CHECK_EQ("The given key was not found", actual_payload.to_string());
+    }
 
 
-    //Check for correct response when found
-    ByteArray value = ByteArray::new_allocated_byte_array("value");
-    kvs.put(key, value);
+    SUBCASE("Check for correct response when found") {
+        //GET key:"key" size:"5" offset:"0"
+        //Metadata: argc:3 instruction:GET command_size:17 payload_size:0
+        //Command: arg1: key arg1Len: 3 arg2: 5 arg2Len: 1 arg3: 0 arg3Len: 1
 
-    processed = std::async(process_command);
-    std::this_thread::sleep_for(100ms);
-    sent = std::async(send_command);
+        //Prepare kvs
+        ByteArray value = ByteArray::new_allocated_byte_array("value");
+        kvs.put(key, value);
 
-    processed.get();
-    auto [actual_metadata_2, actual_command_2, actual_payload_2] = sent.get();
-    std::string expected_payload{ "value" };
+        auto [_, meta_data] = get_command(protocol::Instruction::c_GET, sent_command);
+        auto processed = std::async(process_command, sent_command, meta_data);
+        std::this_thread::sleep_for(100ms);
+        auto sent = std::async(send_command);
+        processed.get();
+        auto [actual_metadata, actual_command, actual_payload] = sent.get();
+        std::string expected_payload{ "value" };
 
-    //Check metadata
-    CHECK_EQ(2, actual_metadata_2.argc);
-    CHECK_EQ(protocol::Instruction::c_GET_RESPONSE, actual_metadata_2.instruction);
-    CHECK_EQ(18, actual_metadata_2.command_size);
-    CHECK_EQ(5, actual_metadata_2.payload_size);
+        //Check metadata
+        CHECK_EQ(2, actual_metadata.argc);
+        CHECK_EQ(protocol::Instruction::c_GET_RESPONSE, actual_metadata.instruction);
+        CHECK_EQ(18, actual_metadata.command_size);
+        CHECK_EQ(5, actual_metadata.payload_size);
 
-    //Check command
-    CHECK_EQ(2, actual_command_2.size());
-    CHECK_EQ("5", actual_command_2[0]);
-    CHECK_EQ("0", actual_command_2[1]);
+        //Check command
+        CHECK_EQ(2, actual_command.size());
+        CHECK_EQ("5", actual_command[0]);
+        CHECK_EQ("0", actual_command[1]);
 
-    //Check payload
-    CHECK_EQ(expected_payload, actual_payload_2.to_string());
+        //Check payload
+        CHECK_EQ(expected_payload, actual_payload.to_string());
+    }
 }
 
 
 TEST_CASE("Test erase") {
     key_value_store::InMemoryKVS kvs{};
     int port{ 3000 };
-
-    //ERASE key:"key"
-    //Metadata: argc:1 instruction:ERASE command_size:0 payload_size:0
-    //command: arg1: key arg1Len: 3
     std::string key{ "key" };
     protocol::command sent_command{"key"};
-    auto [command_data, m] = get_command(protocol::Instruction::c_ERASE, sent_command);
 
     auto send_command = [&]() {
         net::Socket client{};
@@ -198,58 +244,69 @@ TEST_CASE("Test erase") {
         return std::make_tuple(metadata, command, payload);
     };
 
-    auto process_command = [&]() {
+    auto process_command = [&](protocol::command command, protocol::MetaData meta_data) {
         net::Socket server{};
         if (!net::is_listening(server.fd())) {
             server.listen(port);
         }
+
         net::Connection c = server.accept();
-        instruction_handler::handle_erase(c, m, sent_command, kvs);
+        instruction_handler::handle_erase(c, meta_data, command, kvs);
     };
 
-    //Check for error when not found
-    auto processed = std::async(process_command);
-    std::this_thread::sleep_for(100ms);
-    auto sent = std::async(send_command);
+    SUBCASE("Check for error when not found") {
+        //ERASE key:"key"
+        //Metadata: argc:1 instruction:ERASE command_size:0 payload_size:0
+        //command: arg1: key arg1Len: 3
+        auto [_, meta_data] = get_command(protocol::Instruction::c_ERASE, sent_command);
+        auto processed = std::async(process_command, sent_command, meta_data);
+        std::this_thread::sleep_for(100ms);
+        auto sent = std::async(send_command);
+        processed.get();
+        auto [actual_metadata, actual_command, actual_payload] = sent.get();
 
-    processed.get();
-    auto [actual_metadata, actual_command, actual_payload] = sent.get();
+        //Check metadata
+        CHECK_EQ(0, actual_metadata.argc);
+        CHECK_EQ(protocol::Instruction::c_ERROR_RESPONSE, actual_metadata.instruction);
+        CHECK_EQ(0, actual_metadata.command_size);
+        CHECK_EQ(27, actual_metadata.payload_size);
 
-    //Check metadata
-    CHECK_EQ(0, actual_metadata.argc);
-    CHECK_EQ(protocol::Instruction::c_ERROR_RESPONSE, actual_metadata.instruction);
-    CHECK_EQ(0, actual_metadata.command_size);
-    CHECK_EQ(27, actual_metadata.payload_size);
+        //Check command
+        CHECK_EQ(0, actual_command.size());
 
-    //Check command
-    CHECK_EQ(0, actual_command.size());
+        //Check payload
+        CHECK_EQ(27, actual_payload.size());
+        CHECK_EQ("The given key was not found", actual_payload.to_string());
+    }
 
-    //Check payload
-    CHECK_EQ(27, actual_payload.size());
-    CHECK_EQ("The given key was not found", actual_payload.to_string());
+    SUBCASE("Check for correct response when found") {
+        //ERASE key:"key"
+        //Metadata: argc:1 instruction:ERASE command_size:0 payload_size:0
+        //command: arg1: key arg1Len: 3
 
+        //prepare kvs
+        ByteArray value = ByteArray::new_allocated_byte_array("value");
+        kvs.put(key, value);
 
-    //Check for correct response when found
-    ByteArray value = ByteArray::new_allocated_byte_array("value");
-    kvs.put(key, value);
-    processed = std::async(process_command);
-    std::this_thread::sleep_for(100ms);
-    sent = std::async(send_command);
+        auto [_, meta_data] = get_command(protocol::Instruction::c_ERASE, sent_command);
+        auto processed = std::async(process_command, sent_command, meta_data);
+        std::this_thread::sleep_for(100ms);
+        auto sent = std::async(send_command);
+        processed.get();
+        auto [actual_metadata, actual_command, actual_payload] = sent.get();
 
-    processed.get();
-    auto [actual_metadata_2, actual_command_2, actual_payload_2] = sent.get();
+        CHECK_EQ(0, kvs.get_size());
 
-    CHECK_EQ(0, kvs.get_size());
+        //Check metadata
+        CHECK_EQ(0, actual_metadata.argc);
+        CHECK_EQ(protocol::Instruction::c_OK_RESPONSE, actual_metadata.instruction);
+        CHECK_EQ(0, actual_metadata.command_size);
+        CHECK_EQ(0, actual_metadata.payload_size);
 
-    //Check metadata
-    CHECK_EQ(0, actual_metadata_2.argc);
-    CHECK_EQ(protocol::Instruction::c_OK_RESPONSE, actual_metadata_2.instruction);
-    CHECK_EQ(0, actual_metadata_2.command_size);
-    CHECK_EQ(0, actual_metadata_2.payload_size);
+        //Check command
+        CHECK_EQ(0, actual_command.size());
 
-    //Check command
-    CHECK_EQ(0, actual_command_2.size());
-
-    //Check payload
-    CHECK_EQ(0, actual_payload_2.size());
+        //Check payload
+        CHECK_EQ(0, actual_payload.size());
+    }
 }
