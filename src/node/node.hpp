@@ -9,12 +9,14 @@ namespace node {
     class Node {
     public:
 
+        Node(key_value_store::IKeyValueStore& kvs): kvs_{ &kvs } {}
+
         key_value_store::IKeyValueStore& get_kvs() const {
             return *kvs_;
         }
 
     private:
-    
+
         void execute_instruction(net::Connection& connection,
             const protocol::MetaData& meta_data,
             const protocol::command& command);
