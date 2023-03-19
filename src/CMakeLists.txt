@@ -34,6 +34,8 @@ target_include_directories(Networking_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(Node_l
     node/ProtocolHandler.hpp
     node/ProtocolHandler.cpp
+    node/Cluster.hpp
+    node/Cluster.cpp
     net/FileDescriptor.hpp
     net/FileDescriptor.cpp
     net/Socket.hpp
