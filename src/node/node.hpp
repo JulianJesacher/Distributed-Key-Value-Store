@@ -3,6 +3,7 @@
 #include "../KVS/IKeyValueStore.hpp"
 #include "../net/Connection.hpp"
 #include "ProtocolHandler.hpp"
+#include "Cluster.hpp"
 
 namespace node {
 
