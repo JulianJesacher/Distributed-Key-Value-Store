@@ -26,7 +26,8 @@ namespace node {
             c_GET_RESPONSE = 3,
             c_OK_RESPONSE = 4,
             c_ERROR_RESPONSE = 5,
-            enum_size = 3
+            c_CLUSTER_PING = 6,
+            enum_size = 7
         };
 
         struct MetaData {
