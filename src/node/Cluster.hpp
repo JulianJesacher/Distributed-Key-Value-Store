@@ -14,7 +14,6 @@ namespace node::cluster {
     struct ClusterNode;
 
     struct ClusterNodeGossipData {
-        uint16_t node_id;
         std::array<char, CLUSTER_NAME_LEN> name;
         std::array<char, CLUSTER_IP_LEN> ip;
         uint16_t cluster_port;

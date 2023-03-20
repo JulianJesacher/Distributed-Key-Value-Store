@@ -12,7 +12,6 @@ using namespace  std::chrono_literals;
 using namespace node::cluster;
 
 void compare_clusterNodes(const ClusterNode& lhs, const ClusterNode& rhs) {
-    CHECK_EQ(lhs.node_id, rhs.node_id);
     CHECK_EQ(lhs.name, rhs.name);
     CHECK_EQ(lhs.ip, rhs.ip);
     CHECK_EQ(lhs.cluster_port, rhs.cluster_port);
@@ -30,7 +29,7 @@ ClusterNode get_node_copy_empty_connection(const ClusterNode& node) {
 TEST_CASE("Test Gossip Ping") {
 
     ClusterState state_receiver, state_sender;
-    ClusterNode node1{ 1, "node1", "127.0.0.1", 3000, 1235, std::bitset<c_AMOUNT_OF_SLOTS>{}, 0 };
+    ClusterNode node1{ "node1", "127.0.0.1", 3000, 1235, std::bitset<c_AMOUNT_OF_SLOTS>{}, 0 };
     state_sender.nodes["node1"] = get_node_copy_empty_connection(node1);
 
     state_sender.size = 1;

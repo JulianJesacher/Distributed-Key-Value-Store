@@ -10,7 +10,6 @@ namespace node::cluster {
 
     ClusterNodeGossipData convert_node_to_network_order(ClusterNodeGossipData& node) {
         ClusterNodeGossipData converted_node = node;
-        converted_node.node_id = htons(node.node_id);
         converted_node.cluster_port = htons(node.cluster_port);
         converted_node.client_port = htons(node.client_port);
         converted_node.num_slots_served = htons(node.num_slots_served);
@@ -19,7 +18,6 @@ namespace node::cluster {
 
     ClusterNodeGossipData convert_node_to_host_order(ClusterNodeGossipData& node) {
         ClusterNodeGossipData converted_node = node;
-        converted_node.node_id = ntohs(node.node_id);
         converted_node.cluster_port = ntohs(node.cluster_port);
         converted_node.client_port = ntohs(node.client_port);
         converted_node.num_slots_served = ntohs(node.num_slots_served);
