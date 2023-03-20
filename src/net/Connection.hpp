@@ -20,10 +20,12 @@ namespace net {
 
     class Connection {
     public:
+        Connection() = default;
         Connection(FileDescriptor&& fd, sockaddr_in client);
         explicit Connection(FileDescriptor&& fd);
 
         int fd() const;
+        bool is_connected() const;
 
         ssize_t send(const std::string& data);
         ssize_t send(const char* data, uint64_t size);

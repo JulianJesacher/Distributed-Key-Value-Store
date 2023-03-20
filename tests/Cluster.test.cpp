@@ -21,11 +21,17 @@ void compare_clusterNodes(const ClusterNode& lhs, const ClusterNode& rhs) {
     CHECK_EQ(lhs.num_slots_served, rhs.num_slots_served);
 }
 
+ClusterNode get_node_copy_empty_connection(const ClusterNode& node) {
+    ClusterNode copy;
+    memcpy(reinterpret_cast<char*>(&copy), reinterpret_cast<const char*>(&node), sizeof(ClusterNode) - sizeof(net::Connection));
+    return copy;
+}
+
 TEST_CASE("Test Gossip Ping") {
 
     ClusterState state_receiver, state_sender;
-    ClusterNode node1{ 1, "node1", "127.0.0.1", 1234, 1235, std::bitset<c_AMOUNT_OF_SLOTS>{}, 0 };
-    state_sender.nodes["node1"] = node1;
+    ClusterNode node1{ 1, "node1", "127.0.0.1", 3000, 1235, std::bitset<c_AMOUNT_OF_SLOTS>{}, 0 };
+    state_sender.nodes["node1"] = get_node_copy_empty_connection(node1);
 
     state_sender.size = 1;
     state_receiver.size = 0;
@@ -35,19 +41,17 @@ TEST_CASE("Test Gossip Ping") {
 
     auto send_ping = [&]() {
         net::Connection connection = sender_socket.connect(port);
-        ClusterLink link{ connection, ClusterNode{}, false };
-        node::cluster::send_ping(link, state_sender);
+        node::cluster::send_ping(connection, state_sender);
     };
 
     auto handle_ping = [&]() {
         receiver_socket.listen(port);
         net::Connection connection = receiver_socket.accept();
-        ClusterLink link{ connection, ClusterNode{}, true };
 
         //Receive metadata, because that is not handled by the handle_ping function
-        node::protocol::get_metadata(link.connection);
+        node::protocol::get_metadata(connection);
 
-        node::cluster::handle_ping(link, state_receiver, sizeof(ClusterNode));
+        node::cluster::handle_ping(connection, state_receiver, sizeof(ClusterNode));
     };
 
     SUBCASE("Insert new") {
@@ -65,9 +69,9 @@ TEST_CASE("Test Gossip Ping") {
     }
 
     SUBCASE("Overwrite existing") {
-        state_receiver.nodes["node1"] = node1;
+        state_receiver.nodes["node1"] = get_node_copy_empty_connection(node1);;
         node1.num_slots_served = 100;
-        state_sender.nodes["node1"] = node1;
+        state_sender.nodes["node1"] = get_node_copy_empty_connection(node1);;
         CHECK_EQ(state_receiver.nodes.size(), 1);
 
         auto received = std::async(handle_ping);

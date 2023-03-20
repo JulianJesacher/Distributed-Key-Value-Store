@@ -10,7 +10,10 @@ namespace node::cluster {
     constexpr uint16_t CLUSTER_NAME_LEN = 40;
     constexpr uint16_t CLUSTER_IP_LEN = 15;
 
-    struct ClusterNode {
+    struct ClusterNodeGossipData;
+    struct ClusterNode;
+
+    struct ClusterNodeGossipData {
         uint16_t node_id;
         std::array<char, CLUSTER_NAME_LEN> name;
         std::array<char, CLUSTER_IP_LEN> ip;
@@ -20,10 +23,8 @@ namespace node::cluster {
         uint16_t num_slots_served;
     };
 
-    struct ClusterLink {
-        net::Connection& connection;
-        const ClusterNode& node;
-        bool inbound;
+    struct ClusterNode: public ClusterNodeGossipData {
+        net::Connection outgoing_link;
     };
 
     struct ClusterState {
@@ -32,11 +33,11 @@ namespace node::cluster {
     };
 
     struct ClusterGossipMsg {
-        std::vector<ClusterNode> data;
+        std::vector<ClusterNodeGossipData> data;
     };
 
-    void send_ping(ClusterLink& link, ClusterState& state);
+    void send_ping(net::Connection& link, ClusterState& state);
 
-    void handle_ping(ClusterLink& link, ClusterState& state, uint64_t payload_size);
+    void handle_ping(net::Connection& link, ClusterState& state, uint64_t payload_size);
 
 }

@@ -31,6 +31,10 @@ namespace net {
         return fd_.unwrap();
     }
 
+    bool Connection::is_connected() const{
+        return fd_.unwrap() != -1;
+    }
+
     ssize_t Connection::send(const std::string& data) {
         return net::send(fd_.unwrap(), data.c_str(), data.size());
     }
