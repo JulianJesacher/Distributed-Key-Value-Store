@@ -67,6 +67,16 @@ namespace node::cluster {
     }
 
 
+    void update_served_slots_by_node(ClusterState& state, ClusterNode& node) {
+        node.num_slots_served = node.served_slots.count();
+        for (int i = 0; i < CLUSTER_AMOUNT_OF_SLOTS; i++) {
+            if (node.served_slots.test(i)) {
+                state.slots[i] = node;
+            }
+        }
+    }
+
+
     void handle_ping(net::Connection& link, ClusterState& state, uint64_t payload_size) {
         auto sent_nodes = static_cast<uint16_t>(payload_size / sizeof(ClusterNode));
 
@@ -75,10 +85,12 @@ namespace node::cluster {
             protocol::get_payload(link, reinterpret_cast<char*>(&cur), sizeof(ClusterNodeGossipData));
             std::string name(cur.name.begin());
             update_node(name, state, convert_node_to_host_order(cur));
+            update_served_slots_by_node(state, state.nodes[name]);
         }
 
         state.size = state.nodes.size();
     }
+
 
     Status add_node(ClusterState& state, const std::string& name, const std::string& ip, uint16_t cluster_port, uint16_t client_port) {
         net::Socket socket{};
@@ -101,6 +113,7 @@ namespace node::cluster {
         state.size = state.nodes.size();
         return Status::new_ok();
     }
+
 
     uint16_t get_key_hash(const std::string& key) {
         // No hash tag

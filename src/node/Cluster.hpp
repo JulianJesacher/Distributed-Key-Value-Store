@@ -32,6 +32,7 @@ namespace node::cluster {
     struct ClusterState {
         std::unordered_map<std::string, ClusterNode> nodes;
         uint16_t size;
+        std::vector<std::reference_wrapper<ClusterNode>> slots;
     };
 
     struct ClusterGossipMsg {
@@ -43,5 +44,5 @@ namespace node::cluster {
     void handle_ping(net::Connection& link, ClusterState& state, uint64_t payload_size);
 
     Status add_node(ClusterState& state, const std::string& name, const std::string& ip, uint16_t cluster_port, uint16_t client_port);
-
+    
 }

@@ -19,6 +19,10 @@ void compare_clusterNodes(const ClusterNode& lhs, const ClusterNode& rhs) {
     CHECK_EQ(lhs.client_port, rhs.client_port);
     CHECK_EQ(lhs.served_slots, rhs.served_slots);
     CHECK_EQ(lhs.num_slots_served, rhs.num_slots_served);
+
+    for (int i = 0; i < CLUSTER_AMOUNT_OF_SLOTS; i++) {
+        CHECK_EQ(lhs.served_slots[i], rhs.served_slots[i]);
+    }
 }
 
 ClusterNode get_node_copy_empty_connection(const ClusterNode& node) {
@@ -31,6 +35,10 @@ TEST_CASE("Test Gossip Ping") {
 
     ClusterState state_receiver{};
     ClusterState state_sender{};
+    ClusterNode dummy{};
+    state_receiver.slots.resize(CLUSTER_AMOUNT_OF_SLOTS, std::reference_wrapper<ClusterNode>(dummy));
+    state_sender.slots.resize(CLUSTER_AMOUNT_OF_SLOTS, std::reference_wrapper<ClusterNode>(dummy));
+
     ClusterNode node1{ "node1", "127.0.0.1", 3000, 1235, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
     state_sender.nodes["node1"] = get_node_copy_empty_connection(node1);
 
@@ -56,6 +64,7 @@ TEST_CASE("Test Gossip Ping") {
         node::cluster::handle_ping(connection, state_receiver, sizeof(ClusterNode));
     };
 
+
     SUBCASE("Insert new") {
         CHECK_EQ(state_receiver.nodes.size(), 0);
 
@@ -70,9 +79,13 @@ TEST_CASE("Test Gossip Ping") {
         compare_clusterNodes(state_receiver.nodes["node1"], node1);
     }
 
+
     SUBCASE("Overwrite existing") {
         state_receiver.nodes["node1"] = get_node_copy_empty_connection(node1);;
         node1.num_slots_served = 100;
+        node1.served_slots[0] = true;
+        node1.num_slots_served = node1.served_slots.count();
+
         state_sender.nodes["node1"] = get_node_copy_empty_connection(node1);;
         CHECK_EQ(state_receiver.nodes.size(), 1);
 
@@ -85,6 +98,7 @@ TEST_CASE("Test Gossip Ping") {
 
         CHECK_EQ(state_receiver.nodes.size(), 1);
         compare_clusterNodes(state_receiver.nodes["node1"], node1);
+        compare_clusterNodes(state_receiver.nodes["node1"], state_receiver.slots[0]);
     }
 }
 
@@ -113,5 +127,3 @@ TEST_CASE("Hashing") {
     actual = node::cluster::get_key_hash("tes}t{3}");
     CHECK_EQ(expected, actual);
 }
-
-
