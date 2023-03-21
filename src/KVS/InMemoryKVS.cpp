@@ -1,6 +1,6 @@
 #include "InMemoryKVS.hpp"
 
-using namespace key_value_store;
+using InMemoryKVS = key_value_store::InMemoryKVS;
 
 // NOLINTNEXTLINE
 Status InMemoryKVS::put(const std::string& key, const ByteArray& value, const WriteOptions& options) noexcept {

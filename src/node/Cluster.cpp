@@ -31,7 +31,7 @@ namespace node::cluster {
     }
 
     void send_ping(net::Connection& link, ClusterState& state) {
-        uint16_t required_nodes = static_cast<uint16_t>(ceil(state.size / 10.0));
+        auto required_nodes = static_cast<uint16_t>(ceil(state.size / 10.0));
         ClusterGossipMsg msg;
 
         std::mt19937 random_engine(std::random_device{}());
@@ -68,7 +68,7 @@ namespace node::cluster {
 
 
     void handle_ping(net::Connection& link, ClusterState& state, uint64_t payload_size) {
-        uint16_t sent_nodes = static_cast<uint16_t>(payload_size / sizeof(ClusterNode));
+        auto sent_nodes = static_cast<uint16_t>(payload_size / sizeof(ClusterNode));
 
         for (int i = 0; i < sent_nodes; i++) {
             ClusterNodeGossipData cur;

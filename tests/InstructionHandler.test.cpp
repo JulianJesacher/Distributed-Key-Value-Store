@@ -14,8 +14,8 @@
 #include "node/ProtocolHandler.hpp"
 #include "node/Cluster.hpp"
 
-using namespace  std::chrono_literals;
-using namespace node;
+using namespace  std::chrono_literals; // NOLINT
+using namespace node; // NOLINT
 
 std::pair<std::string, protocol::MetaData> get_command_and_metadata(protocol::Instruction i,
     const std::vector<std::string>& command, const std::string& payload = "") {
@@ -26,7 +26,7 @@ std::pair<std::string, protocol::MetaData> get_command_and_metadata(protocol::In
     protocol::MetaData m{argc, i, command_size, payload.size()};
 
     std::string serialized_command{reinterpret_cast<const char*>(&m), sizeof(m)};
-    for (auto& s : command) {
+    for (const auto& s : command) {
         uint64_t size = s.size();
         serialized_command += std::string{reinterpret_cast<const char*>(&size), sizeof(size)};
         serialized_command += s;
@@ -55,7 +55,7 @@ TEST_CASE("Test put") {
         return std::make_tuple(metadata, command, payload);
     };
 
-    auto process_command = [&](protocol::command command, protocol::MetaData meta_data) {
+    auto process_command = [&](const protocol::command& command, protocol::MetaData meta_data) {
         net::Socket server{};
         if (!net::is_listening(server.fd())) {
             server.listen(port);
@@ -69,7 +69,8 @@ TEST_CASE("Test put") {
         //Metadata: argc:3 instruction:PUT command_size:17 payload_size:4
         //Command: arg1: key arg1Len: 3 arg2: 5 arg2Len: 1 arg3: 0 arg3Len: 1
 
-        std::string key{ "key" }, value{ "value" };
+        std::string key{ "key" };
+        std::string value{ "value" };
         protocol::command command{"key", "5", "0"};
         auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_PUT, command, value);
         auto processed = std::async(process_command, command, meta_data);
@@ -100,12 +101,12 @@ TEST_CASE("Test put") {
 
 
     SUBCASE("Increase size of underlying buffer with offset") {
-        //PUT key:"key" payload_size:15 offset:5 "valuevaluevalue"
+        //PUT key:"key" payload_size:15 offset:5 "valuevaluevalue" // NOLINT
         //Metadata: argc:3 instruction:PUT command_size:18 payload_size:20
         //Command: arg1: key arg1Len: 3 arg2: 15 arg2Len: 2 arg3: 5 arg3Len: 1
 
         //Prepare kvs
-        std::string key{ "key" }, value{ "valuevaluevalue" };
+        std::string key{ "key" }, value{ "valuevaluevalue" }; // NOLINT
         ByteArray ba = ByteArray::new_allocated_byte_array("value");
         kvs.put(key, ba);
 
@@ -123,7 +124,7 @@ TEST_CASE("Test put") {
         //Check kvs state
         CHECK_EQ(kvs.get_size(), 1);
         kvs.get("key", ba);
-        CHECK_EQ("valuevaluevaluevalue", ba.to_string());
+        CHECK_EQ("valuevaluevaluevalue", ba.to_string()); // NOLINT
 
         //Check response:
         //Check metadata
@@ -158,13 +159,13 @@ TEST_CASE("Test get") {
         return std::make_tuple(metadata, command, payload);
     };
 
-    auto process_command = [&](protocol::command command, protocol::MetaData meta_data) {
+    auto process_command = [&](protocol::command command) {
         net::Socket server{};
         if (!net::is_listening(server.fd())) {
             server.listen(port);
         }
         net::Connection c = server.accept();
-        instruction_handler::handle_get(c, meta_data, command, kvs);
+        instruction_handler::handle_get(c, command, kvs);
     };
 
 
@@ -173,8 +174,7 @@ TEST_CASE("Test get") {
         //Metadata: argc:3 instruction:GET command_size:17 payload_size:0
         //Command: arg1: key arg1Len: 3 arg2: 5 arg2Len: 1 arg3: 0 arg3Len: 1
 
-        auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_GET, sent_command);
-        auto processed = std::async(process_command, sent_command, meta_data);
+        auto processed = std::async(process_command, sent_command);
         std::this_thread::sleep_for(100ms);
         auto sent = std::async(send_command);
         processed.get();
@@ -246,22 +246,22 @@ TEST_CASE("Test erase") {
         return std::make_tuple(metadata, command, payload);
     };
 
-    auto process_command = [&](protocol::command command, protocol::MetaData meta_data) {
+    auto process_command = [&](protocol::command command) {
         net::Socket server{};
         if (!net::is_listening(server.fd())) {
             server.listen(port);
         }
 
         net::Connection c = server.accept();
-        instruction_handler::handle_erase(c, meta_data, command, kvs);
+        instruction_handler::handle_erase(c, command, kvs);
     };
 
     SUBCASE("Check for error when not found") {
         //ERASE key:"key"
         //Metadata: argc:1 instruction:ERASE command_size:0 payload_size:0
         //command: arg1: key arg1Len: 3
-        auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_ERASE, sent_command);
-        auto processed = std::async(process_command, sent_command, meta_data);
+
+        auto processed = std::async(process_command, sent_command);
         std::this_thread::sleep_for(100ms);
         auto sent = std::async(send_command);
         processed.get();
@@ -290,8 +290,7 @@ TEST_CASE("Test erase") {
         ByteArray value = ByteArray::new_allocated_byte_array("value");
         kvs.put(key, value);
 
-        auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_ERASE, sent_command);
-        auto processed = std::async(process_command, sent_command, meta_data);
+        auto processed = std::async(process_command, sent_command);
         std::this_thread::sleep_for(100ms);
         auto sent = std::async(send_command);
         processed.get();
@@ -331,14 +330,14 @@ TEST_CASE("Test meet") {
         return std::make_tuple(metadata, command, payload);
     };
 
-    auto process_meet = [&](protocol::command command, protocol::MetaData meta_data) {
+    auto process_meet = [&](protocol::command command) {
         net::Socket server{};
         if (!net::is_listening(server.fd())) {
             server.listen(receiver_cluster_port);
         }
 
         net::Connection c = server.accept();
-        instruction_handler::handle_meet(c, meta_data, command, cluster_state);
+        instruction_handler::handle_meet(c, command, cluster_state);
     };
 
     auto node_listener = [&](int port) {
@@ -354,12 +353,10 @@ TEST_CASE("Test meet") {
             std::to_string(new_node_cluster_port),
             new_node_name};
 
-    auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_MEET, sent_command);
-
     auto listener = std::async(node_listener, new_node_cluster_port);
     std::this_thread::sleep_for(100ms);
 
-    auto processed = std::async(process_meet, sent_command, meta_data);
+    auto processed = std::async(process_meet, sent_command);
     std::this_thread::sleep_for(100ms);
 
     auto sent = std::async(send_meet);

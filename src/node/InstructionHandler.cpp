@@ -70,8 +70,7 @@ namespace node::instruction_handler {
         protocol::send_instruction(connection, state);
     }
 
-    void handle_get(net::Connection& connection, const protocol::MetaData& meta_data,
-        const protocol::command& command, key_value_store::IKeyValueStore& kvs) {
+    void handle_get(net::Connection& connection, const protocol::command& command, key_value_store::IKeyValueStore& kvs) {
         Status argc_state = check_argc(command, Instruction::c_GET);
         if (!argc_state.is_ok()) {
             protocol::send_instruction(connection, argc_state);
@@ -94,8 +93,7 @@ namespace node::instruction_handler {
             Instruction::c_GET_RESPONSE, value.data() + offset, size);
     }
 
-    void handle_erase(net::Connection& connection, const protocol::MetaData& metadata,
-        const protocol::command& command, key_value_store::IKeyValueStore& kvs) {
+    void handle_erase(net::Connection& connection, const protocol::command& command, key_value_store::IKeyValueStore& kvs) {
         Status argc_state = check_argc(command, Instruction::c_ERASE);
         if (!argc_state.is_ok()) {
             protocol::send_instruction(connection, argc_state);
@@ -107,18 +105,17 @@ namespace node::instruction_handler {
         protocol::send_instruction(connection, state);
     }
 
-    void handle_meet(net::Connection& connection, const protocol::MetaData& metadata,
-        const protocol::command& command, cluster::ClusterState& cluster_state) {
+    void handle_meet(net::Connection& connection, const protocol::command& command, cluster::ClusterState& cluster_state) {
         Status argc_state = check_argc(command, Instruction::c_MEET);
         if (!argc_state.is_ok()) {
             protocol::send_instruction(connection, argc_state);
             return;
         }
 
-        std::string ip = command[to_integral(MeetFields::c_IP)];
+        const std::string& ip = command[to_integral(MeetFields::c_IP)];
         uint16_t port = std::stoul(command[to_integral(MeetFields::c_CLIENT_PORT)]);
         uint16_t cluster_port = std::stoul(command[to_integral(MeetFields::c_CLUSTER_PORT)]);
-        std::string name = command[to_integral(MeetFields::c_NAME)];
+        const std::string& name = command[to_integral(MeetFields::c_NAME)];
 
         Status state = cluster::add_node(cluster_state, name, ip, cluster_port, port);
         protocol::send_instruction(connection, state);
