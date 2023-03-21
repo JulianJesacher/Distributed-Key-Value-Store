@@ -29,7 +29,7 @@ ClusterNode get_node_copy_empty_connection(const ClusterNode& node) {
 TEST_CASE("Test Gossip Ping") {
 
     ClusterState state_receiver, state_sender;
-    ClusterNode node1{ "node1", "127.0.0.1", 3000, 1235, std::bitset<c_AMOUNT_OF_SLOTS>{}, 0 };
+    ClusterNode node1{ "node1", "127.0.0.1", 3000, 1235, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
     state_sender.nodes["node1"] = get_node_copy_empty_connection(node1);
 
     state_sender.size = 1;

@@ -19,6 +19,9 @@ namespace node {
         case Instruction::c_ERASE:
             instruction_handler::handle_erase(connection, meta_data, command, get_kvs());
             break;
+        case Instruction::c_MEET:
+            instruction_handler::handle_meet(connection, meta_data, command, get_cluster_state());
+            break;
         default:
             protocol::send_instruction(connection, Status::new_not_supported("Unknown instruction"));
             break;

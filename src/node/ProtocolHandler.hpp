@@ -27,7 +27,8 @@ namespace node {
             c_OK_RESPONSE = 4,
             c_ERROR_RESPONSE = 5,
             c_CLUSTER_PING = 6,
-            enum_size = 7
+            c_MEET = 7,
+            enum_size = 8
         };
 
         struct MetaData {
@@ -61,6 +62,14 @@ namespace node {
         enum class CommandFieldsErase {
             c_KEY = 0,
             enum_size = 1
+        };
+
+        enum class CommandFieldsMeet {
+            c_IP = 0,
+            c_CLIENT_PORT = 1,
+            c_CLUSTER_PORT = 2,
+            c_NAME = 3,
+            enum_size = 4
         };
 
         using command = std::vector<std::string>;

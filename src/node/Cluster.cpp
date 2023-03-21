@@ -1,10 +1,16 @@
 #include <cmath>
 #include <iterator>
 #include <random>
+#include <stdexcept>
+#include <string.h>
+#include <algorithm>
 
 #include "Cluster.hpp"
 #include "ProtocolHandler.hpp"
 #include "net/Socket.hpp"
+
+
+#include <iostream>
 
 namespace node::cluster {
 
@@ -72,5 +78,27 @@ namespace node::cluster {
         }
 
         state.size = state.nodes.size();
+    }
+
+    Status add_node(ClusterState& state, const std::string& name, const std::string& ip, uint16_t cluster_port, uint16_t client_port) {
+        net::Socket socket{};
+        ClusterNode node{};
+
+        try {
+            net::Connection link = socket.connect(ip, cluster_port);
+            node.outgoing_link = std::move(link);
+        }
+        catch (std::runtime_error& e) {
+            return Status::new_error("Could not connect to node: " + std::string(e.what()));
+        }
+
+        node.cluster_port = cluster_port;
+        node.client_port = client_port;
+        strncpy(node.name.data(), name.data(), std::min(CLUSTER_NAME_LEN, static_cast<uint16_t>(name.size())));
+        strncpy(node.ip.data(), ip.data(), std::min(CLUSTER_IP_LEN, static_cast<uint16_t>(ip.size())));
+
+        state.nodes[std::string(node.name.begin())] = std::move(node);
+        state.size = state.nodes.size();
+        return Status::new_ok();
     }
 }

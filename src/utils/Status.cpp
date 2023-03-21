@@ -4,7 +4,7 @@
 
 Status::Status() noexcept
 {
-    errorCode_ = StatusCode::s_Ok;
+    errorCode_ = StatusCode::s_OK;
     errorMsg_ = "";
 }
 

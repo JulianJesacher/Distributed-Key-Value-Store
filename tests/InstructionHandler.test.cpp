@@ -4,6 +4,7 @@
 #include <future>
 #include <chrono>
 #include <numeric>
+#include <thread>
 
 #include "node/InstructionHandler.hpp"
 #include "net/Connection.hpp"
@@ -11,11 +12,12 @@
 #include "KVS/IKeyValueStore.hpp"
 #include "net/Socket.hpp"
 #include "node/ProtocolHandler.hpp"
+#include "node/Cluster.hpp"
 
 using namespace  std::chrono_literals;
 using namespace node;
 
-std::pair<std::string, protocol::MetaData> get_command(protocol::Instruction i,
+std::pair<std::string, protocol::MetaData> get_command_and_metadata(protocol::Instruction i,
     const std::vector<std::string>& command, const std::string& payload = "") {
 
     uint16_t argc = command.size() + (payload.empty() ? 0 : 1);
@@ -69,7 +71,7 @@ TEST_CASE("Test put") {
 
         std::string key{ "key" }, value{ "value" };
         protocol::command command{"key", "5", "0"};
-        auto [_, meta_data] = get_command(protocol::Instruction::c_PUT, command, value);
+        auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_PUT, command, value);
         auto processed = std::async(process_command, command, meta_data);
         std::this_thread::sleep_for(100ms);
         auto sent = std::async(send_command, value);
@@ -109,7 +111,7 @@ TEST_CASE("Test put") {
 
         //Increase size of underlying buffer array test, with offset
         protocol::command command{ "key", "15", "5" };
-        auto [_, meta_data] = get_command(protocol::Instruction::c_PUT, command, value);
+        auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_PUT, command, value);
         meta_data.payload_size = 20;
         auto processed = std::async(process_command, command, meta_data);
         std::this_thread::sleep_for(100ms);
@@ -171,7 +173,7 @@ TEST_CASE("Test get") {
         //Metadata: argc:3 instruction:GET command_size:17 payload_size:0
         //Command: arg1: key arg1Len: 3 arg2: 5 arg2Len: 1 arg3: 0 arg3Len: 1
 
-        auto [_, meta_data] = get_command(protocol::Instruction::c_GET, sent_command);
+        auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_GET, sent_command);
         auto processed = std::async(process_command, sent_command, meta_data);
         std::this_thread::sleep_for(100ms);
         auto sent = std::async(send_command);
@@ -202,7 +204,7 @@ TEST_CASE("Test get") {
         ByteArray value = ByteArray::new_allocated_byte_array("value");
         kvs.put(key, value);
 
-        auto [_, meta_data] = get_command(protocol::Instruction::c_GET, sent_command);
+        auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_GET, sent_command);
         auto processed = std::async(process_command, sent_command, meta_data);
         std::this_thread::sleep_for(100ms);
         auto sent = std::async(send_command);
@@ -258,7 +260,7 @@ TEST_CASE("Test erase") {
         //ERASE key:"key"
         //Metadata: argc:1 instruction:ERASE command_size:0 payload_size:0
         //command: arg1: key arg1Len: 3
-        auto [_, meta_data] = get_command(protocol::Instruction::c_ERASE, sent_command);
+        auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_ERASE, sent_command);
         auto processed = std::async(process_command, sent_command, meta_data);
         std::this_thread::sleep_for(100ms);
         auto sent = std::async(send_command);
@@ -288,7 +290,7 @@ TEST_CASE("Test erase") {
         ByteArray value = ByteArray::new_allocated_byte_array("value");
         kvs.put(key, value);
 
-        auto [_, meta_data] = get_command(protocol::Instruction::c_ERASE, sent_command);
+        auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_ERASE, sent_command);
         auto processed = std::async(process_command, sent_command, meta_data);
         std::this_thread::sleep_for(100ms);
         auto sent = std::async(send_command);
@@ -309,4 +311,80 @@ TEST_CASE("Test erase") {
         //Check payload
         CHECK_EQ(0, actual_payload.size());
     }
+}
+
+TEST_CASE("Test meet") {
+    int receiver_cluster_port{ 3000 };
+    int new_node_client_port{ 3001 }, new_node_cluster_port{ 3002 };
+    cluster::ClusterState cluster_state{};
+    std::string new_node_ip{"127.0.0.1"}, new_node_name{ "new_node" };
+
+
+    auto send_meet = [&]() {
+        net::Socket client{};
+        net::Connection c = client.connect(receiver_cluster_port);
+
+        auto metadata = protocol::get_metadata(c);
+        auto command = protocol::get_command(c, 0, metadata.command_size);
+        ByteArray payload = protocol::get_payload(c, metadata.payload_size);
+
+        return std::make_tuple(metadata, command, payload);
+    };
+
+    auto process_meet = [&](protocol::command command, protocol::MetaData meta_data) {
+        net::Socket server{};
+        if (!net::is_listening(server.fd())) {
+            server.listen(receiver_cluster_port);
+        }
+
+        net::Connection c = server.accept();
+        instruction_handler::handle_meet(c, meta_data, command, cluster_state);
+    };
+
+    auto node_listener = [&](int port) {
+        net::Socket server{};
+        if (!net::is_listening(server.fd())) {
+            server.listen(port);
+        }
+    };
+
+    protocol::command sent_command{
+        new_node_ip,
+            std::to_string(new_node_client_port),
+            std::to_string(new_node_cluster_port),
+            new_node_name};
+
+    auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_MEET, sent_command);
+
+    auto listener = std::async(node_listener, new_node_cluster_port);
+    std::this_thread::sleep_for(100ms);
+
+    auto processed = std::async(process_meet, sent_command, meta_data);
+    std::this_thread::sleep_for(100ms);
+
+    auto sent = std::async(send_meet);
+
+    processed.get();
+    auto [actual_metadata, actual_command, actual_payload] = sent.get();
+
+    CHECK_EQ(1, cluster_state.size);
+
+    //Check node
+    cluster::ClusterNode& node = cluster_state.nodes[new_node_name];
+    CHECK_EQ(new_node_name, std::string(node.name.begin()));
+    CHECK_EQ(new_node_ip, std::string(node.ip.begin()));
+    CHECK_EQ(new_node_client_port, node.client_port);
+    CHECK_EQ(new_node_cluster_port, node.cluster_port);
+
+    //Check metadata
+    CHECK_EQ(0, actual_metadata.argc);
+    CHECK_EQ(protocol::Instruction::c_OK_RESPONSE, actual_metadata.instruction);
+    CHECK_EQ(0, actual_metadata.command_size);
+    CHECK_EQ(0, actual_metadata.payload_size);
+
+    //Check command
+    CHECK_EQ(0, actual_command.size());
+
+    //Check payload
+    CHECK_EQ(0, actual_payload.size());
 }

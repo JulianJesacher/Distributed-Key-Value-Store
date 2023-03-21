@@ -4,13 +4,12 @@
 using PutFields = node::protocol::CommandFieldsPut;
 using GetFields = node::protocol::CommandFieldsGet;
 using EraseFields = node::protocol::CommandFieldsErase;
+using MeetFields = node::protocol::CommandFieldsMeet;
 using Instruction = node::protocol::Instruction;
 
 namespace node::instruction_handler {
 
     Status check_argc(const protocol::command& command, protocol::Instruction instruction) {
-        std::string error_msg{"Wrong number of arguments for "};
-
         switch (instruction) {
         case Instruction::c_PUT:
             if (command.size() != to_integral(PutFields::enum_size)) {
@@ -25,6 +24,11 @@ namespace node::instruction_handler {
         case Instruction::c_ERASE:
             if (command.size() != to_integral(EraseFields::enum_size)) {
                 return Status::new_invalid_argument("Wrong number of arguments for ERASE");
+            }
+            break;
+        case Instruction::c_MEET:
+            if (command.size() != to_integral(MeetFields::enum_size)) {
+                return Status::new_invalid_argument("Wrong number of arguments for MEET");
             }
             break;
         default:
@@ -100,6 +104,23 @@ namespace node::instruction_handler {
 
         const std::string& key = command[to_integral(EraseFields::c_KEY)];
         Status state = kvs.erase(key);
+        protocol::send_instruction(connection, state);
+    }
+
+    void handle_meet(net::Connection& connection, const protocol::MetaData& metadata,
+        const protocol::command& command, cluster::ClusterState& cluster_state) {
+        Status argc_state = check_argc(command, Instruction::c_MEET);
+        if (!argc_state.is_ok()) {
+            protocol::send_instruction(connection, argc_state);
+            return;
+        }
+
+        std::string ip = command[to_integral(MeetFields::c_IP)];
+        uint16_t port = std::stoul(command[to_integral(MeetFields::c_CLIENT_PORT)]);
+        uint16_t cluster_port = std::stoul(command[to_integral(MeetFields::c_CLUSTER_PORT)]);
+        std::string name = command[to_integral(MeetFields::c_NAME)];
+
+        Status state = cluster::add_node(cluster_state, name, ip, cluster_port, port);
         protocol::send_instruction(connection, state);
     }
 }

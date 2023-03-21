@@ -16,6 +16,10 @@ namespace node {
             return *kvs_;
         }
 
+        cluster::ClusterState& get_cluster_state() {
+            return cluster_state_;
+        }
+
     private:
 
         void execute_instruction(net::Connection& connection,
@@ -25,5 +29,6 @@ namespace node {
         void handle_connection(net::Connection& connection);
 
         std::unique_ptr<key_value_store::IKeyValueStore> kvs_;
+        cluster::ClusterState cluster_state_;
     };
 }
