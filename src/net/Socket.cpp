@@ -28,6 +28,9 @@ namespace net {
         if (setsockopt(fd_.unwrap(), SOL_SOCKET, SO_REUSEADDR, &true_flag, sizeof(true_flag))) {
             throw std::runtime_error("error setting SO_REUSEADDR for socket: " + std::to_string(errno));
         }
+        if (setsockopt(fd_.unwrap(), SOL_SOCKET, SO_REUSEPORT, &true_flag, sizeof(true_flag))) {
+            throw std::runtime_error("error setting SO_REUSEPORT for socket: " + std::to_string(errno));
+        }
     }
 
     void Socket::listen(uint16_t port, int queue_size) const {
