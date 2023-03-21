@@ -37,7 +37,7 @@ TEST_CASE("Test Gossip Ping") {
     state_receiver.size = 0;
 
     int port{ 3000 };
-    net::Socket sender_socket{}
+    net::Socket sender_socket{};
     net::Socket receiver_socket{};
 
     auto send_ping = [&]() {

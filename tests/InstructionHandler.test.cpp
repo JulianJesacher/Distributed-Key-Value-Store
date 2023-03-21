@@ -204,8 +204,7 @@ TEST_CASE("Test get") {
         ByteArray value = ByteArray::new_allocated_byte_array("value");
         kvs.put(key, value);
 
-        auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_GET, sent_command);
-        auto processed = std::async(process_command, sent_command, meta_data);
+        auto processed = std::async(process_command, sent_command);
         std::this_thread::sleep_for(100ms);
         auto sent = std::async(send_command);
         processed.get();
@@ -345,6 +344,8 @@ TEST_CASE("Test meet") {
         if (!net::is_listening(server.fd())) {
             server.listen(port);
         }
+        server.accept();
+        return true;
     };
 
     protocol::command sent_command{
@@ -363,8 +364,10 @@ TEST_CASE("Test meet") {
 
     processed.get();
     auto [actual_metadata, actual_command, actual_payload] = sent.get();
+    auto connected = listener.get();
 
     CHECK_EQ(1, cluster_state.size);
+    CHECK(connected);
 
     //Check node
     cluster::ClusterNode& node = cluster_state.nodes[new_node_name];
@@ -384,4 +387,6 @@ TEST_CASE("Test meet") {
 
     //Check payload
     CHECK_EQ(0, actual_payload.size());
+
+    std::cout << actual_payload.to_string() << std::endl;
 }
