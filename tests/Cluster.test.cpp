@@ -5,6 +5,7 @@
 #include <chrono>
 
 #include "node/Cluster.hpp"
+#include "node/Cluster.cpp"
 #include "net/Socket.hpp"
 #include "node/ProtocolHandler.hpp"
 
@@ -86,3 +87,31 @@ TEST_CASE("Test Gossip Ping") {
         compare_clusterNodes(state_receiver.nodes["node1"], node1);
     }
 }
+
+TEST_CASE("Hashing") {
+    auto expected = std::hash<std::string>{}("test");
+    auto actual = node::cluster::get_key_hash("test");
+    CHECK_EQ(expected, actual);
+
+    expected = std::hash<std::string>{}("test2");
+    actual = node::cluster::get_key_hash("test2");
+    CHECK_EQ(expected, actual);
+
+    expected = std::hash<std::string>{}("test");
+    actual = node::cluster::get_key_hash("{test}3");
+    CHECK_EQ(expected, actual);
+
+    expected = std::hash<std::string>{}("tes{t");
+    actual = node::cluster::get_key_hash("{tes{t}{3}}}");
+    CHECK_EQ(expected, actual);
+
+    expected = std::hash<std::string>{}("tes}t{3");
+    actual = node::cluster::get_key_hash("tes}t{3");
+    CHECK_EQ(expected, actual);
+
+    expected = std::hash<std::string>{}("3");
+    actual = node::cluster::get_key_hash("tes}t{3}");
+    CHECK_EQ(expected, actual);
+}
+
+

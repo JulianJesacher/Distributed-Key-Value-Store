@@ -101,4 +101,19 @@ namespace node::cluster {
         state.size = state.nodes.size();
         return Status::new_ok();
     }
+
+    std::size_t get_key_hash(const std::string& key) {
+        // No hash tag
+        if (key.find('{') == std::string::npos || key.find('}') == std::string::npos) {
+            return std::hash<std::string>{}(key);
+        }
+
+        // Hash tag
+        auto start = key.find('{') + 1;
+        auto end = key.find('}', start);
+        if (start < end && end != std::string::npos) {
+            return std::hash<std::string>{}(key.substr(start, end - start));
+        }
+        return std::hash<std::string>{}(key);
+    }
 }
