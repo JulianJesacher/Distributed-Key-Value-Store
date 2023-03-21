@@ -89,27 +89,27 @@ TEST_CASE("Test Gossip Ping") {
 }
 
 TEST_CASE("Hashing") {
-    auto expected = std::hash<std::string>{}("test");
+    auto expected = static_cast<uint16_t>(std::hash<std::string>{}("test"));
     auto actual = node::cluster::get_key_hash("test");
     CHECK_EQ(expected, actual);
 
-    expected = std::hash<std::string>{}("test2");
+    expected = static_cast<uint16_t>(std::hash<std::string>{}("test2"));
     actual = node::cluster::get_key_hash("test2");
     CHECK_EQ(expected, actual);
 
-    expected = std::hash<std::string>{}("test");
+    expected = static_cast<uint16_t>(std::hash<std::string>{}("test"));
     actual = node::cluster::get_key_hash("{test}3");
     CHECK_EQ(expected, actual);
 
-    expected = std::hash<std::string>{}("tes{t");
+    expected = static_cast<uint16_t>(std::hash<std::string>{}("tes{t"));
     actual = node::cluster::get_key_hash("{tes{t}{3}}}");
     CHECK_EQ(expected, actual);
 
-    expected = std::hash<std::string>{}("tes}t{3");
+    expected = static_cast<uint16_t>(std::hash<std::string>{}("tes}t{3"));
     actual = node::cluster::get_key_hash("tes}t{3");
     CHECK_EQ(expected, actual);
 
-    expected = std::hash<std::string>{}("3");
+    expected = static_cast<uint16_t>(std::hash<std::string>{}("3"));
     actual = node::cluster::get_key_hash("tes}t{3}");
     CHECK_EQ(expected, actual);
 }

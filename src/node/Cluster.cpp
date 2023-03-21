@@ -102,7 +102,7 @@ namespace node::cluster {
         return Status::new_ok();
     }
 
-    std::size_t get_key_hash(const std::string& key) {
+    uint16_t get_key_hash(const std::string& key) {
         // No hash tag
         if (key.find('{') == std::string::npos || key.find('}') == std::string::npos) {
             return std::hash<std::string>{}(key);
