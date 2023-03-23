@@ -53,5 +53,7 @@ add_library(Node_l
     KVS/InMemoryKVS.cpp
     utils/Status.hpp
     utils/Status.cpp
+    node/node.hpp
+    node/node.cpp
 )
 target_include_directories(Node_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

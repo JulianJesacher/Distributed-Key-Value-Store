@@ -13,13 +13,13 @@ namespace node {
     void Node::execute_instruction(net::Connection& connection, const MetaData& meta_data, const command& command) {
         switch (meta_data.instruction) {
         case Instruction::c_PUT:
-            instruction_handler::handle_put(connection, meta_data, command, get_kvs());
+            instruction_handler::handle_put(connection, meta_data, command, get_kvs(), get_cluster_state());
             break;
         case Instruction::c_GET:
-            instruction_handler::handle_get(connection, command, get_kvs());
+            instruction_handler::handle_get(connection, command, get_kvs(), get_cluster_state());
             break;
         case Instruction::c_ERASE:
-            instruction_handler::handle_erase(connection, command, get_kvs());
+            instruction_handler::handle_erase(connection, command, get_kvs(), get_cluster_state());
             break;
         case Instruction::c_MEET:
             instruction_handler::handle_meet(connection, command, get_cluster_state());

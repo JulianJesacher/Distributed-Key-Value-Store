@@ -38,7 +38,7 @@ namespace node::instruction_handler {
     }
 
     void handle_put(net::Connection& connection, const protocol::MetaData& meta_data,
-        const protocol::command& command, key_value_store::IKeyValueStore& kvs) {
+        const protocol::command& command, key_value_store::IKeyValueStore& kvs, cluster::ClusterState& cluster_state) {
         Status argc_state = check_argc(command, Instruction::c_PUT);
         if (!argc_state.is_ok()) {
             protocol::send_instruction(connection, {}, Instruction::c_ERROR_RESPONSE, argc_state.get_msg());
@@ -49,6 +49,10 @@ namespace node::instruction_handler {
         uint64_t cur_payload_size = std::stoull(command[to_integral(PutFields::c_CUR_PAYLOAD_SIZE)]);
         uint64_t offset = std::stoull(command[to_integral(PutFields::c_OFFSET)]);
         const std::string& key = command[to_integral(PutFields::c_KEY)];
+
+        if (!cluster::check_key_slot_served_and_send_meet(key, connection, cluster_state)) {
+            return;
+        }
 
         //key doesn't exist
         if (!kvs.contains_key(key)) {
@@ -70,7 +74,8 @@ namespace node::instruction_handler {
         protocol::send_instruction(connection, state);
     }
 
-    void handle_get(net::Connection& connection, const protocol::command& command, key_value_store::IKeyValueStore& kvs) {
+    void handle_get(net::Connection& connection, const protocol::command& command,
+        key_value_store::IKeyValueStore& kvs, cluster::ClusterState& cluster_state) {
         Status argc_state = check_argc(command, Instruction::c_GET);
         if (!argc_state.is_ok()) {
             protocol::send_instruction(connection, argc_state);
@@ -80,6 +85,10 @@ namespace node::instruction_handler {
         const std::string& key = command[to_integral(GetFields::c_KEY)];
         uint64_t size = std::stoull(command[to_integral(GetFields::c_SIZE)]);
         uint64_t offset = std::stoull(command[to_integral(GetFields::c_OFFSET)]);
+
+        if (!cluster::check_key_slot_served_and_send_meet(key, connection, cluster_state)) {
+            return;
+        }
 
         ByteArray value{};
         Status state = kvs.get(key, value);
@@ -93,7 +102,8 @@ namespace node::instruction_handler {
             Instruction::c_GET_RESPONSE, value.data() + offset, size);
     }
 
-    void handle_erase(net::Connection& connection, const protocol::command& command, key_value_store::IKeyValueStore& kvs) {
+    void handle_erase(net::Connection& connection, const protocol::command& command,
+        key_value_store::IKeyValueStore& kvs, cluster::ClusterState& cluster_state) {
         Status argc_state = check_argc(command, Instruction::c_ERASE);
         if (!argc_state.is_ok()) {
             protocol::send_instruction(connection, argc_state);
@@ -101,6 +111,10 @@ namespace node::instruction_handler {
         }
 
         const std::string& key = command[to_integral(EraseFields::c_KEY)];
+        if (!cluster::check_key_slot_served_and_send_meet(key, connection, cluster_state)) {
+            return;
+        }
+
         Status state = kvs.erase(key);
         protocol::send_instruction(connection, state);
     }

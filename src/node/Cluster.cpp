@@ -9,9 +9,6 @@
 #include "ProtocolHandler.hpp"
 #include "net/Socket.hpp"
 
-
-#include <iostream>
-
 namespace node::cluster {
 
     ClusterNodeGossipData convert_node_to_network_order(ClusterNodeGossipData& node) {
@@ -30,6 +27,7 @@ namespace node::cluster {
         return std::move(converted_node);
     }
 
+    //TODO: send myself as well
     void send_ping(net::Connection& link, ClusterState& state) {
         auto required_nodes = static_cast<uint16_t>(ceil(state.size / 10.0));
         ClusterGossipMsg msg;
@@ -128,5 +126,20 @@ namespace node::cluster {
             return std::hash<std::string>{}(key.substr(start, end - start));
         }
         return std::hash<std::string>{}(key);
+    }
+
+    bool check_key_slot_served_and_send_meet(const std::string& key, net::Connection& connection, cluster::ClusterState& state) {
+        uint16_t slot = get_key_hash(key) % CLUSTER_AMOUNT_OF_SLOTS;
+        if (state.myself.served_slots.test(slot)) {
+            return true;
+        }
+
+        ClusterNode& serving_node = state.slots[slot];
+        protocol::send_instruction(
+            connection,
+            protocol::command{std::string(serving_node.ip.data()), std::to_string(serving_node.client_port)},
+            protocol::Instruction::c_MOVE
+        );
+        return false;
     }
 }

@@ -39,6 +39,12 @@ TEST_CASE("Test put") {
     key_value_store::InMemoryKVS kvs{};
     ByteArray ba{};
     Status st = kvs.get("key", ba);
+    cluster::ClusterState cluster_state{};
+    cluster_state.myself = cluster::ClusterNode{};
+    for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; ++i) {
+        cluster_state.myself.served_slots[i] = true;
+    }
+
     CHECK_EQ(kvs.get_size(), 0);
     CHECK(st.is_not_found());
     int port{ 3000 };
@@ -61,7 +67,7 @@ TEST_CASE("Test put") {
             server.listen(port);
         }
         net::Connection c = server.accept();
-        instruction_handler::handle_put(c, meta_data, command, kvs);
+        instruction_handler::handle_put(c, meta_data, command, kvs, cluster_state);
     };
 
     SUBCASE("Insert first time") {
@@ -144,6 +150,12 @@ TEST_CASE("Test put") {
 
 TEST_CASE("Test get") {
     key_value_store::InMemoryKVS kvs{};
+    cluster::ClusterState cluster_state{};
+    cluster_state.myself = cluster::ClusterNode{};
+    for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; ++i) {
+        cluster_state.myself.served_slots[i] = true;
+    }
+
     int port{ 3000 };
     std::string key{ "key" };
     protocol::command sent_command{"key", "5", "0"};
@@ -165,7 +177,7 @@ TEST_CASE("Test get") {
             server.listen(port);
         }
         net::Connection c = server.accept();
-        instruction_handler::handle_get(c, command, kvs);
+        instruction_handler::handle_get(c, command, kvs, cluster_state);
     };
 
 
@@ -230,6 +242,12 @@ TEST_CASE("Test get") {
 
 TEST_CASE("Test erase") {
     key_value_store::InMemoryKVS kvs{};
+    cluster::ClusterState cluster_state{};
+    cluster_state.myself = cluster::ClusterNode{};
+    for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; ++i) {
+        cluster_state.myself.served_slots[i] = true;
+    }
+
     int port{ 3000 };
     std::string key{ "key" };
     protocol::command sent_command{"key"};
@@ -252,7 +270,7 @@ TEST_CASE("Test erase") {
         }
 
         net::Connection c = server.accept();
-        instruction_handler::handle_erase(c, command, kvs);
+        instruction_handler::handle_erase(c, command, kvs, cluster_state);
     };
 
     SUBCASE("Check for error when not found") {

@@ -28,7 +28,8 @@ namespace node {
             c_ERROR_RESPONSE = 5,
             c_CLUSTER_PING = 6,
             c_MEET = 7,
-            enum_size = 8
+            c_MOVE = 8,
+            enum_size = 9
         };
 
         struct MetaData {
@@ -70,6 +71,12 @@ namespace node {
             c_CLUSTER_PORT = 2,
             c_NAME = 3,
             enum_size = 4
+        };
+
+        enum class CommandFieldsMove {
+            c_OTHER_IP = 0,
+            c_OTHER_CLIENT_PORT = 1,
+            enum_size = 2
         };
 
         using command = std::vector<std::string>;
