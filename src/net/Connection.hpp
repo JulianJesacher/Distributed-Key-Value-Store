@@ -5,6 +5,7 @@
 #include <span>
 #include <string>
 #include <istream>
+#include <memory>
 
 #include "FileDescriptor.hpp"
 
@@ -36,7 +37,7 @@ namespace net {
         ssize_t receive(std::span<char> data) const;
 
     private:
-        FileDescriptor fd_;
+        std::shared_ptr<FileDescriptor> fd_;
         std::optional<sockaddr_in> client_ = std::nullopt;
     };
 }
