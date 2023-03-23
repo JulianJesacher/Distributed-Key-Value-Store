@@ -33,8 +33,8 @@ TEST_CASE("Test Gossip Ping") {
     ClusterState state_receiver{};
     ClusterState state_sender{};
     ClusterNode dummy{};
-    state_receiver.slots.resize(CLUSTER_AMOUNT_OF_SLOTS, std::reference_wrapper<ClusterNode>(dummy));
-    state_sender.slots.resize(CLUSTER_AMOUNT_OF_SLOTS, std::reference_wrapper<ClusterNode>(dummy));
+    state_receiver.slots.resize(CLUSTER_AMOUNT_OF_SLOTS, { &dummy, 0, SlotState::c_NORMAL });
+    state_sender.slots.resize(CLUSTER_AMOUNT_OF_SLOTS, { &dummy, 0, SlotState::c_NORMAL });
 
     ClusterNode node1{ "node1", "127.0.0.1", 3000, 1235, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
     state_sender.nodes["node1"] = node1;
@@ -97,7 +97,7 @@ TEST_CASE("Test Gossip Ping") {
 
         CHECK_EQ(state_receiver.nodes.size(), 1);
         compare_clusterNodes(state_receiver.nodes["node1"], node1);
-        compare_clusterNodes(state_receiver.nodes["node1"], state_receiver.slots[0]);
+        compare_clusterNodes(state_receiver.nodes["node1"], *state_receiver.slots[0].served_by);
     }
 }
 
@@ -135,14 +135,15 @@ std::string get_key_with_target_slot(int slot) {
     return key;
 }
 
-//TODO: Make test valid for all values of CLUSTER_AMOUNT_OF_SLOTS
 TEST_CASE("test sharding") {
     key_value_store::InMemoryKVS kvs1{};
     key_value_store::InMemoryKVS kvs2{};
 
     ClusterNode node1{ "node1", "127.0.0.1", 3002, 3000, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
     ClusterNode node2 = node1;
+    std::vector<Slot> slots{ {&node1, 0, SlotState::c_NORMAL}, {&node1, 1, SlotState::c_NORMAL}, {&node2, 2, SlotState::c_NORMAL} };
     node2.client_port = 9000;
+
     node1.served_slots[0] = true;
     node1.served_slots[1] = true;
     node2.served_slots[2] = true;
@@ -150,13 +151,13 @@ TEST_CASE("test sharding") {
     ClusterState state1{
         {{"node1", node1}, {"node2", node2}},
         2,
-        {node1, node1, node2},
+        slots,
         node1 };
 
     ClusterState state2{
         {{"node1", node1}, {"node2", node2}},
         2,
-        {node1, node1, node2},
+        slots,
         node2 };
 
     Node server1 = Node::new_in_memory_node(state1);

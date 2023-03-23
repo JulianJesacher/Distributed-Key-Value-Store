@@ -69,7 +69,7 @@ namespace node::cluster {
         node.num_slots_served = node.served_slots.count();
         for (int i = 0; i < CLUSTER_AMOUNT_OF_SLOTS; i++) {
             if (node.served_slots.test(i)) {
-                state.slots[i] = node;
+                *state.slots[i].served_by = node;
             }
         }
     }
@@ -134,7 +134,7 @@ namespace node::cluster {
             return true;
         }
 
-        ClusterNode& serving_node = state.slots[slot];
+        ClusterNode& serving_node = *state.slots[slot].served_by;
         protocol::send_instruction(
             connection,
             protocol::command{std::string(serving_node.ip.data()), std::to_string(serving_node.client_port)},

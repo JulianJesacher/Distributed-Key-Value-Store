@@ -7,6 +7,9 @@
 #include "../net/Connection.hpp"
 #include "../utils/Status.hpp"
 
+template<typename T>
+using observer_ptr = T*;
+
 namespace node::cluster {
 
     constexpr uint16_t CLUSTER_AMOUNT_OF_SLOTS = 3;
@@ -29,10 +32,23 @@ namespace node::cluster {
         net::Connection outgoing_link;
     };
 
+    enum class SlotState {
+        c_NORMAL = 0,
+        c_MIGRATING = 1,
+        c_IMPORTING = 2,
+        enum_size = 3
+    };
+
+    struct Slot {
+        observer_ptr<ClusterNode> served_by;
+        uint64_t amount_of_keys;
+        SlotState state;
+    };
+
     struct ClusterState {
         std::unordered_map<std::string, ClusterNode> nodes;
         uint16_t size;
-        std::vector<std::reference_wrapper<ClusterNode>> slots;
+        std::vector<Slot> slots;
         ClusterNode myself;
     };
 
