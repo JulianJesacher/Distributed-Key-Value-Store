@@ -18,6 +18,9 @@ namespace key_value_store
         IKeyValueStore(const IKeyValueStore&) = delete;
         IKeyValueStore& operator=(const IKeyValueStore&) = delete;
 
+        IKeyValueStore(IKeyValueStore&&) noexcept = default;
+        IKeyValueStore& operator=(IKeyValueStore&&) noexcept = default;
+
         virtual Status put(const std::string& key, const ByteArray& value, const WriteOptions& options = WriteOptions{}) noexcept = 0;
         virtual Status get(const std::string& key, ByteArray& value, const ReadOptions& options = ReadOptions{}) const noexcept = 0;
         virtual Status erase(const std::string& key, const WriteOptions& options = WriteOptions{}) noexcept = 0;

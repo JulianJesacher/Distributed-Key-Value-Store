@@ -14,6 +14,7 @@ namespace key_value_store {
         InMemoryKVS() = default;
         InMemoryKVS(const InMemoryKVS&) = delete;
         InMemoryKVS& operator=(const InMemoryKVS&) = delete;
+        ~InMemoryKVS() override = default;
 
         Status put(const std::string& key, const ByteArray& value, const WriteOptions& options = WriteOptions{}) noexcept override;
         Status get(const std::string& key, ByteArray& value, const ReadOptions& options = ReadOptions{}) const noexcept override;
