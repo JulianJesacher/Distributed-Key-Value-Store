@@ -160,7 +160,7 @@ TEST_CASE("Test get") {
 
     int port{ 3000 };
     std::string key{ "key" };
-    protocol::command sent_command{"key", "5", "0", "0"};
+    protocol::command sent_command{"key", "0", "0", "0"}; //Size 0 means whole value sent
 
     auto send_command = [&]() {
         net::Socket client{};

@@ -140,6 +140,10 @@ namespace node::instruction_handler {
             return;
         }
 
+        //When size is set to 0, the whole value is sent
+        if (size == 0) {
+            size = value.size();
+        }
         //Send retrieved value
         protocol::command response_command{std::to_string(value.size()), std::to_string(offset)};
         protocol::send_instruction(connection, response_command,

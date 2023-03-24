@@ -39,7 +39,7 @@ namespace node {
             uint16_t argc;
             Instruction instruction;
             uint64_t command_size;
-            uint64_t payload_size; //TODO: Why not in the command?
+            uint64_t payload_size;
         };
 
         enum class CommandFieldsPut {
@@ -52,7 +52,7 @@ namespace node {
 
         enum class CommandFieldsGet {
             c_KEY = 0,
-            c_SIZE = 1, //Size 0 means get the entire value TODO: Implement
+            c_SIZE = 1,
             c_OFFSET = 2,
             c_ASKING = 3,
             enum_size = 4
