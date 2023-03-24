@@ -31,7 +31,8 @@ namespace node {
             c_MOVE = 8,
             c_IMPORT_SLOT = 9,
             c_MIGRATE_SLOT = 10,
-            enum_size = 11
+            c_ASK = 11,
+            enum_size = 12
         };
 
         struct MetaData {
@@ -53,7 +54,8 @@ namespace node {
             c_KEY = 0,
             c_SIZE = 1, //Size 0 means get the entire value
             c_OFFSET = 2,
-            enum_size = 3
+            c_ASKING = 3,
+            enum_size = 4
         };
 
         enum class CommandFieldsGetResponse {
@@ -94,6 +96,8 @@ namespace node {
             c_OTHER_CLIENT_PORT = 2,
             enum_size = 3
         };
+
+        using CommandFieldsAsk = CommandFieldsMove;
 
         using command = std::vector<std::string>;
 
