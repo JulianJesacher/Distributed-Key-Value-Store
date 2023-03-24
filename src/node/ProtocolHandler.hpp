@@ -52,7 +52,7 @@ namespace node {
 
         enum class CommandFieldsGet {
             c_KEY = 0,
-            c_SIZE = 1, //Size 0 means get the entire value
+            c_SIZE = 1, //Size 0 means get the entire value TODO: Implement
             c_OFFSET = 2,
             c_ASKING = 3,
             enum_size = 4
@@ -96,6 +96,7 @@ namespace node {
             c_OTHER_CLIENT_PORT = 2,
             enum_size = 3
         };
+        //TODO: Specific error when asking flag was not set which contains information about the other node
 
         using CommandFieldsAsk = CommandFieldsMove;
 
