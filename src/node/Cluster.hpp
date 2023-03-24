@@ -67,4 +67,6 @@ namespace node::cluster {
 
     bool check_slot_served_and_send_meet(uint16_t slot, net::Connection& connection, cluster::ClusterState& state);
 
+    uint16_t get_key_hash(const std::string& key);
+
 }

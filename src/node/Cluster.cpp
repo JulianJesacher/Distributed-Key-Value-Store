@@ -150,7 +150,6 @@ namespace node::cluster {
                 protocol::Instruction::c_MOVE
             );
         }
-
         return false;
     }
 }
