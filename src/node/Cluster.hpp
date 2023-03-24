@@ -40,9 +40,10 @@ namespace node::cluster {
     };
 
     struct Slot {
-        observer_ptr<ClusterNode> served_by;
-        uint64_t amount_of_keys;
-        SlotState state;
+        observer_ptr<ClusterNode> served_by = nullptr;
+        uint64_t amount_of_keys = 0;
+        SlotState state = SlotState::c_NORMAL;
+        observer_ptr<ClusterNode> migration_partner = nullptr;
     };
 
     struct ClusterState {
@@ -63,5 +64,7 @@ namespace node::cluster {
     Status add_node(ClusterState& state, const std::string& name, const std::string& ip, uint16_t cluster_port, uint16_t client_port);
 
     bool check_key_slot_served_and_send_meet(const std::string& key, net::Connection& connection, cluster::ClusterState& state);
+
+    bool check_slot_served_and_send_meet(uint16_t slot, net::Connection& connection, cluster::ClusterState& state);
 
 }

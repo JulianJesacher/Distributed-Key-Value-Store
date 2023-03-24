@@ -15,4 +15,8 @@ namespace node::instruction_handler {
         key_value_store::IKeyValueStore& kvs, cluster::ClusterState& cluster_state);
 
     void handle_meet(net::Connection& connection, const protocol::command& command, cluster::ClusterState& cluster_state);
+
+    void handle_migrate_slot(net::Connection& connection, const protocol::command& command, cluster::ClusterState& cluster_state);
+
+    void handle_import_slot(net::Connection& connection, const protocol::command& command, cluster::ClusterState& cluster_state);
 }

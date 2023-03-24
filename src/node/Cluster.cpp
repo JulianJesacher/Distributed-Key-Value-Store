@@ -130,16 +130,27 @@ namespace node::cluster {
 
     bool check_key_slot_served_and_send_meet(const std::string& key, net::Connection& connection, cluster::ClusterState& state) {
         uint16_t slot = get_key_hash(key) % CLUSTER_AMOUNT_OF_SLOTS;
+        return check_slot_served_and_send_meet(slot, connection, state);
+    }
+
+    bool check_slot_served_and_send_meet(uint16_t slot, net::Connection& connection, cluster::ClusterState& state) {
         if (state.myself.served_slots.test(slot)) {
             return true;
         }
 
-        ClusterNode& serving_node = *state.slots[slot].served_by;
-        protocol::send_instruction(
-            connection,
-            protocol::command{std::string(serving_node.ip.data()), std::to_string(serving_node.client_port)},
-            protocol::Instruction::c_MOVE
-        );
+
+        if (state.slots[slot].served_by == nullptr) {
+            protocol::send_instruction(connection, Status::new_error("Slot not served by any node"));
+        }
+        else {
+            ClusterNode& serving_node = *state.slots[slot].served_by;
+            protocol::send_instruction(
+                connection,
+                protocol::command{std::string(serving_node.ip.data()), std::to_string(serving_node.client_port)},
+                protocol::Instruction::c_MOVE
+            );
+        }
+
         return false;
     }
 }

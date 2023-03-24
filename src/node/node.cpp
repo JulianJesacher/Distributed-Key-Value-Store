@@ -24,6 +24,12 @@ namespace node {
         case Instruction::c_MEET:
             instruction_handler::handle_meet(connection, command, get_cluster_state());
             break;
+        case Instruction::c_MIGRATE_SLOT:
+            instruction_handler::handle_migrate_slot(connection, command, get_cluster_state());
+            break;
+        case Instruction::c_IMPORT_SLOT:
+            instruction_handler::handle_import_slot(connection, command, get_cluster_state());
+            break;
         default:
             protocol::send_instruction(connection, Status::new_not_supported("Unknown instruction"));
             break;

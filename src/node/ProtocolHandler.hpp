@@ -29,7 +29,9 @@ namespace node {
             c_CLUSTER_PING = 6,
             c_MEET = 7,
             c_MOVE = 8,
-            enum_size = 9
+            c_IMPORT_SLOT = 9,
+            c_MIGRATE_SLOT = 10,
+            enum_size = 11
         };
 
         struct MetaData {
@@ -79,6 +81,20 @@ namespace node {
             enum_size = 2
         };
 
+        enum class CommandFieldsMigrate {
+            c_SLOT = 0,
+            c_OTHER_IP = 1,
+            c_OTHER_CLIENT_PORT = 2,
+            enum_size = 3
+        };
+
+        enum class CommandFieldsImport {
+            c_SLOT = 0,
+            c_OTHER_IP = 1,
+            c_OTHER_CLIENT_PORT = 2,
+            enum_size = 3
+        };
+
         using command = std::vector<std::string>;
 
         MetaData get_metadata(net::Connection& connection);
@@ -103,6 +119,3 @@ namespace node {
         void serialize_command(const command& command, std::span<char> buf);
     }
 }
-
-
-
