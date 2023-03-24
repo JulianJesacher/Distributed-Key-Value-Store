@@ -37,7 +37,7 @@ std::string get_key_with_target_slot(int slot, std::vector<std::string> distinct
     return key;
 }
 
-/*
+
 TEST_CASE("Test Gossip Ping") {
 
     ClusterState state_receiver{};
@@ -243,7 +243,7 @@ TEST_CASE("test sharding") {
         CHECK_EQ(actual_payload.size(), 0);
     }
 }
-*/
+
 
 TEST_CASE("Test migrating slot") {
     uint16_t cluster_port = 4000;
@@ -423,6 +423,37 @@ TEST_CASE("Test migrating slot") {
 
         //Check payload
         CHECK_EQ(actual_payload.size(), 0);
+
+
+
+        //Get key from node1, expect no asking error
+        processed = std::async(process_instruction, std::ref(server1), client_port1);
+        std::this_thread::sleep_for(100ms);
+        sent = std::async(send_instruction, client_port1, protocol::command{ key_slot_0, "10", "0", "false" }, protocol::Instruction::c_GET, "");
+        std::tie(actual_metadata, actual_command, actual_payload) = sent.get();
+        processed.get();
+
+        CHECK_EQ(1, server0.get_kvs().get_size());
+        CHECK_EQ(1, server0.get_cluster_state().slots[0].amount_of_keys);
+        CHECK_EQ(1, server1.get_kvs().get_size());
+        CHECK_EQ(1, server1.get_cluster_state().slots[0].amount_of_keys);
+        CHECK_EQ(SlotState::c_MIGRATING, server0.get_cluster_state().slots[0].state);
+        CHECK_EQ(SlotState::c_IMPORTING, server1.get_cluster_state().slots[0].state);
+
+        //Check metadata
+        CHECK_EQ(actual_metadata.argc, 2);
+        CHECK_EQ(actual_metadata.command_size, 8 + 9 + 8 + 4);
+        CHECK_EQ(actual_metadata.payload_size, 0);
+        CHECK_EQ(actual_metadata.instruction, protocol::Instruction::c_NO_ASKING_ERROR);
+
+        //Check command
+        CHECK_EQ(actual_command.size(), 2);
+        CHECK_EQ(actual_command[0], "127.0.0.1");
+        CHECK_EQ(actual_command[1], std::to_string(client_port0));
+
+        //Check payload
+        CHECK_EQ(actual_payload.size(), 0);
+
 
 
         // Erase key from node 0, expect ask response

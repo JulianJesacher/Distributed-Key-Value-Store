@@ -122,7 +122,11 @@ namespace node::instruction_handler {
 
         //Check if client has been redirected by asking command if slot is importing
         if (cluster_state.slots[slot].state == cluster::SlotState::c_IMPORTING && !asking) {
-            protocol::send_instruction(connection, Status::new_error("The slot is importing, ASKING flag required"));
+            cluster::ClusterNode* migration_partner = cluster_state.slots[slot].migration_partner;
+            protocol::send_instruction(
+                connection,
+                protocol::command{ std::string(migration_partner->ip.data()), std::to_string(migration_partner->client_port)},
+                Instruction::c_NO_ASKING_ERROR);
             return;
         }
 

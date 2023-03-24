@@ -32,7 +32,8 @@ namespace node {
             c_IMPORT_SLOT = 9,
             c_MIGRATE_SLOT = 10,
             c_ASK = 11,
-            enum_size = 12
+            c_NO_ASKING_ERROR = 12,
+            enum_size = 13
         };
 
         struct MetaData {
@@ -96,7 +97,12 @@ namespace node {
             c_OTHER_CLIENT_PORT = 2,
             enum_size = 3
         };
-        //TODO: Specific error when asking flag was not set which contains information about the other node
+
+        enum class CommandFieldsNoAskingError {
+            c_OTHER_IP = 0,
+            c_OTHER_CLIENT_PORT = 1,
+            enum_size = 2
+        };
 
         using CommandFieldsAsk = CommandFieldsMove;
 
