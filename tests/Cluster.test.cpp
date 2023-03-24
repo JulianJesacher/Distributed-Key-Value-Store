@@ -33,35 +33,36 @@ TEST_CASE("Test Gossip Ping") {
     ClusterState state_receiver{};
     ClusterState state_sender{};
     ClusterNode dummy{};
-    state_receiver.slots.resize(CLUSTER_AMOUNT_OF_SLOTS, { &dummy, 0, SlotState::c_NORMAL });
-    state_sender.slots.resize(CLUSTER_AMOUNT_OF_SLOTS, { &dummy, 0, SlotState::c_NORMAL });
+    state_receiver.slots.resize(3);
+    state_sender.slots.resize(3);
 
-    ClusterNode node1{ "node1", "127.0.0.1", 3000, 1235, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
+    uint16_t cluster_port{ 3000 };
+    ClusterNode node1{ "node1", "127.0.0.1", cluster_port, 1235 };
+    ClusterNode sender{ "sender", "127.0.0.1", cluster_port, 1236 };
+
     state_sender.nodes["node1"] = node1;
-
     state_sender.size = 1;
+    state_sender.myself = sender;
     state_receiver.size = 0;
 
-    int port{ 3000 };
-    net::Socket sender_socket{};
-    net::Socket receiver_socket{};
 
     auto send_ping = [&]() {
-        net::Connection connection = sender_socket.connect(port);
+        net::Socket sender_socket{};
+        net::Connection connection = sender_socket.connect(cluster_port);
         node::cluster::send_ping(connection, state_sender);
     };
 
     auto handle_ping = [&]() {
-        if (!net::is_listening(port)) {
-            receiver_socket.listen(port);
+        net::Socket receiver_socket{};
+        if (!net::is_listening(cluster_port)) {
+            receiver_socket.listen(cluster_port);
         }
 
         net::Connection connection = receiver_socket.accept();
 
         //Receive metadata, because that is not handled by the handle_ping function
-        node::protocol::get_metadata(connection);
-
-        node::cluster::handle_ping(connection, state_receiver, sizeof(ClusterNode));
+        auto meta_data = node::protocol::get_metadata(connection);
+        node::cluster::handle_ping(connection, state_receiver, meta_data.payload_size);
     };
 
     SUBCASE("Insert new") {
@@ -74,19 +75,20 @@ TEST_CASE("Test Gossip Ping") {
         sent.get();
         received.get();
 
-        CHECK_EQ(state_receiver.nodes.size(), 1);
+        CHECK_EQ(state_receiver.nodes.size(), 2);
         compare_clusterNodes(state_receiver.nodes["node1"], node1);
+        compare_clusterNodes(state_receiver.nodes["sender"], sender);
     }
-
 
     SUBCASE("Overwrite existing") {
         state_receiver.nodes["node1"] = node1;
         node1.num_slots_served = 100;
         node1.served_slots[0] = true;
         node1.num_slots_served = node1.served_slots.count();
+        state_receiver.nodes["sender"] = sender;
 
         state_sender.nodes["node1"] = node1;
-        CHECK_EQ(state_receiver.nodes.size(), 1);
+        CHECK_EQ(state_receiver.nodes.size(), 2);
 
         auto received = std::async(handle_ping);
         std::this_thread::sleep_for(100ms);
@@ -95,10 +97,12 @@ TEST_CASE("Test Gossip Ping") {
         sent.get();
         received.get();
 
-        CHECK_EQ(state_receiver.nodes.size(), 1);
+        CHECK_EQ(state_receiver.nodes.size(), 2);
         compare_clusterNodes(state_receiver.nodes["node1"], node1);
         compare_clusterNodes(state_receiver.nodes["node1"], *state_receiver.slots[0].served_by);
+        compare_clusterNodes(state_receiver.nodes["sender"], sender);
     }
+
 }
 
 TEST_CASE("Hashing") {
@@ -141,7 +145,7 @@ TEST_CASE("test sharding") {
 
     ClusterNode node1{ "node1", "127.0.0.1", 3002, 3000, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
     ClusterNode node2 = node1;
-    std::vector<Slot> slots{ {&node1, 0, SlotState::c_NORMAL}, {&node1, 1, SlotState::c_NORMAL}, {&node2, 2, SlotState::c_NORMAL} };
+    std::vector<Slot> slots{ {&node1, 0, SlotState::c_NORMAL}, { &node1, 1, SlotState::c_NORMAL }, { &node2, 2, SlotState::c_NORMAL } };
     node2.client_port = 9000;
 
     node1.served_slots[0] = true;

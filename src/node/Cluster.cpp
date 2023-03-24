@@ -27,13 +27,13 @@ namespace node::cluster {
         return std::move(converted_node);
     }
 
-    //TODO: send myself as well
     void send_ping(net::Connection& link, ClusterState& state) {
         auto required_nodes = static_cast<uint16_t>(ceil(state.size / 10.0));
         ClusterGossipMsg msg;
 
         std::mt19937 random_engine(std::random_device{}());
         std::uniform_int_distribution<uint16_t> dist(0, state.size - 1); //Important: [a, b] both borders inclusive
+        msg.data.emplace_back(convert_node_to_network_order(state.myself));
 
         for (int i = 0; i < required_nodes; i++) {
             uint16_t random_index = dist(random_engine);
@@ -46,7 +46,7 @@ namespace node::cluster {
             protocol::command{},
             protocol::Instruction::c_CLUSTER_PING,
             reinterpret_cast<char*>(msg.data.data()),
-            required_nodes * sizeof(ClusterNodeGossipData));
+            (required_nodes + 1) * sizeof(ClusterNodeGossipData));
     }
 
     void update_node(const std::string& name, ClusterState& state, const ClusterNodeGossipData& node) {
@@ -69,14 +69,14 @@ namespace node::cluster {
         node.num_slots_served = node.served_slots.count();
         for (int i = 0; i < CLUSTER_AMOUNT_OF_SLOTS; i++) {
             if (node.served_slots.test(i)) {
-                *state.slots[i].served_by = node;
+                state.slots[i].served_by = &node;
             }
         }
     }
 
 
     void handle_ping(net::Connection& link, ClusterState& state, uint64_t payload_size) {
-        auto sent_nodes = static_cast<uint16_t>(payload_size / sizeof(ClusterNode));
+        auto sent_nodes = static_cast<uint16_t>(payload_size / sizeof(ClusterNodeGossipData));
 
         for (int i = 0; i < sent_nodes; i++) {
             ClusterNodeGossipData cur;
