@@ -28,6 +28,16 @@ void compare_clusterNodes(const ClusterNode& lhs, const ClusterNode& rhs) {
     }
 }
 
+std::string get_key_with_target_slot(int slot, std::vector<std::string> distinct = {}) {
+    std::string key = "key";
+    while (node::cluster::get_key_hash(key) % node::cluster::CLUSTER_AMOUNT_OF_SLOTS != slot
+        || std::find(distinct.begin(), distinct.end(), key) != distinct.end()) {
+        key += "1";
+    }
+    return key;
+}
+
+/*
 TEST_CASE("Test Gossip Ping") {
 
     ClusterState state_receiver{};
@@ -131,13 +141,6 @@ TEST_CASE("Hashing") {
     CHECK_EQ(expected, actual);
 }
 
-std::string get_key_with_target_slot(int slot) {
-    std::string key = "key";
-    while (node::cluster::get_key_hash(key) % node::cluster::CLUSTER_AMOUNT_OF_SLOTS != slot) {
-        key += "1";
-    }
-    return key;
-}
 
 TEST_CASE("test sharding") {
     key_value_store::InMemoryKVS kvs1{};
@@ -235,6 +238,249 @@ TEST_CASE("test sharding") {
         CHECK_EQ(actual_command.size(), 2);
         CHECK_EQ(actual_command[0], "127.0.0.1");
         CHECK_EQ(actual_command[1], "9000");
+
+        //Check payload
+        CHECK_EQ(actual_payload.size(), 0);
+    }
+}
+*/
+
+TEST_CASE("Test migrating slot") {
+    uint16_t cluster_port = 4000;
+    uint16_t client_port0 = 3000, client_port1 = 3001;
+
+    ClusterNode node0{ "node1", "127.0.0.1", cluster_port, client_port0, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
+    ClusterNode node1{ "node1", "127.0.0.1", cluster_port, client_port1, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
+
+    //Initially, node1 serves slot0 and node2 serves slot1
+    node0.served_slots[0] = true;
+    node0.num_slots_served = 1;
+
+    node1.served_slots[1] = true;
+    node1.num_slots_served = 1;
+
+    std::unordered_map<std::string, ClusterNode> nodes{ {"node0", node0}, { "node1", node1 } };
+    std::vector<Slot> slots{ {&node0, 0, SlotState::c_NORMAL}, { &node1, 1, SlotState::c_NORMAL } };
+
+    ClusterState state0{
+        nodes,
+        2,
+        slots,
+        node0 };
+    ClusterState state1{
+        nodes,
+        2,
+        slots,
+        node1 };
+
+
+    Node server0 = Node::new_in_memory_node(state0);
+    Node server1 = Node::new_in_memory_node(state1);
+
+    auto process_instruction = [](Node& server, uint16_t port) {
+        net::Socket socket{};
+        if (!net::is_listening(socket.fd())) {
+            socket.listen(port);
+        }
+
+        net::Connection connection = socket.accept();
+        server.handle_connection(connection);
+    };
+
+    auto send_instruction = [](uint16_t port, const protocol::command command, protocol::Instruction instruction, const std::string& payload) {
+        net::Connection connection = net::Socket{}.connect(port);
+        node::protocol::send_instruction(connection, command, instruction, payload);
+
+        auto received_metadata = protocol::get_metadata(connection);
+        auto received_command = protocol::get_command(connection, received_metadata.argc, received_metadata.command_size);
+        ByteArray received_payload = protocol::get_payload(connection, received_metadata.payload_size);
+
+        return std::make_tuple(received_metadata, received_command, received_payload);
+    };
+
+    SUBCASE("Test migrate slot1 from node0 to node1") {
+        std::string key_slot_0 = get_key_with_target_slot(0);
+
+        // Insert Key to slot 0 in node0
+        auto processed = std::async(process_instruction, std::ref(server0), client_port0);
+        std::this_thread::sleep_for(100ms);
+        auto sent = std::async(send_instruction, client_port0, protocol::command{ key_slot_0, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
+        sent.get();
+        processed.get();
+
+        //Check slot state of node0
+        CHECK_EQ(1, server0.get_kvs().get_size());
+        CHECK_EQ(1, server0.get_cluster_state().slots[0].amount_of_keys);
+        CHECK_EQ(SlotState::c_NORMAL, server0.get_cluster_state().slots[0].state);
+
+
+
+
+        // Set slot0 to migrating in node0
+        processed = std::async(process_instruction, std::ref(server0), client_port0);
+        std::this_thread::sleep_for(100ms);
+        sent = std::async(send_instruction, client_port0, protocol::command{ "0", "127.0.0.1", std::to_string(client_port1) }, protocol::Instruction::c_MIGRATE_SLOT, "");
+        sent.get();
+        processed.get();
+
+        // Set slot0 to importing in node1
+        processed = std::async(process_instruction, std::ref(server1), client_port1);
+        std::this_thread::sleep_for(100ms);
+        sent = std::async(send_instruction, client_port1, protocol::command{ "0", "127.0.0.1", std::to_string(client_port0)}, protocol::Instruction::c_IMPORT_SLOT, "");
+        sent.get();
+        processed.get();
+
+        // Check slot states
+        CHECK_EQ(1, server0.get_kvs().get_size());
+        CHECK_EQ(1, server0.get_cluster_state().slots[0].amount_of_keys);
+        CHECK_EQ(SlotState::c_MIGRATING, server0.get_cluster_state().slots[0].state);
+        CHECK_EQ(SlotState::c_IMPORTING, server1.get_cluster_state().slots[0].state);
+
+
+
+
+        // Insert key with slot 0 in node0, expect ask response
+        std::string other_key_slot_0 = get_key_with_target_slot(0, { key_slot_0 });
+
+        processed = std::async(process_instruction, std::ref(server0), client_port0);
+        std::this_thread::sleep_for(100ms);
+        sent = std::async(send_instruction, client_port0, protocol::command{ other_key_slot_0, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
+        auto [actual_metadata, actual_command, actual_payload] = sent.get();
+        processed.get();
+
+        CHECK_EQ(1, server0.get_kvs().get_size());
+        CHECK_EQ(1, server0.get_cluster_state().slots[0].amount_of_keys);
+
+        //Check metadata
+        CHECK_EQ(actual_metadata.argc, 2);
+        CHECK_EQ(actual_metadata.command_size, 8 + 9 + 8 + 4);
+        CHECK_EQ(actual_metadata.payload_size, 0);
+        CHECK_EQ(actual_metadata.instruction, protocol::Instruction::c_ASK);
+
+        //Check command
+        CHECK_EQ(actual_command.size(), 2);
+        CHECK_EQ(actual_command[0], "127.0.0.1");
+        CHECK_EQ(actual_command[1], std::to_string(client_port1));
+
+        //Check payload
+        CHECK_EQ(actual_payload.size(), 0);
+
+
+
+
+        // Insert key with slot 0 in node1, expect ok response
+        processed = std::async(process_instruction, std::ref(server1), client_port1);
+        std::this_thread::sleep_for(100ms);
+        sent = std::async(send_instruction, client_port1, protocol::command{ other_key_slot_0, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
+        std::tie(actual_metadata, actual_command, actual_payload) = sent.get();
+        processed.get();
+
+        CHECK_EQ(1, server0.get_kvs().get_size());
+        CHECK_EQ(1, server0.get_cluster_state().slots[0].amount_of_keys);
+        CHECK_EQ(1, server1.get_kvs().get_size());
+        CHECK_EQ(1, server1.get_cluster_state().slots[0].amount_of_keys);
+        CHECK_EQ(SlotState::c_MIGRATING, server0.get_cluster_state().slots[0].state);
+        CHECK_EQ(SlotState::c_IMPORTING, server1.get_cluster_state().slots[0].state);
+
+        //Check metadata
+        CHECK_EQ(actual_metadata.argc, 0);
+        CHECK_EQ(actual_metadata.command_size, 0);
+        CHECK_EQ(actual_metadata.payload_size, 0);
+        CHECK_EQ(actual_metadata.instruction, protocol::Instruction::c_OK_RESPONSE);
+
+        //Check command
+        CHECK_EQ(actual_command.size(), 0);
+
+        //Check payload
+        CHECK_EQ(actual_payload.size(), 0);
+
+
+
+        // Get key from node 0, expect ask response
+        processed = std::async(process_instruction, std::ref(server0), client_port0);
+        std::this_thread::sleep_for(100ms);
+        sent = std::async(send_instruction, client_port0, protocol::command{ other_key_slot_0, "10", "0", "false" }, protocol::Instruction::c_GET, "");
+        std::tie(actual_metadata, actual_command, actual_payload) = sent.get();
+        processed.get();
+
+        CHECK_EQ(1, server0.get_kvs().get_size());
+        CHECK_EQ(1, server0.get_cluster_state().slots[0].amount_of_keys);
+        CHECK_EQ(1, server1.get_kvs().get_size());
+        CHECK_EQ(1, server1.get_cluster_state().slots[0].amount_of_keys);
+        CHECK_EQ(SlotState::c_MIGRATING, server0.get_cluster_state().slots[0].state);
+        CHECK_EQ(SlotState::c_IMPORTING, server1.get_cluster_state().slots[0].state);
+
+        //Check metadata
+        CHECK_EQ(actual_metadata.argc, 2);
+        CHECK_EQ(actual_metadata.command_size, 8 + 9 + 8 + 4);
+        CHECK_EQ(actual_metadata.payload_size, 0);
+        CHECK_EQ(actual_metadata.instruction, protocol::Instruction::c_ASK);
+
+        //Check command
+        CHECK_EQ(actual_command.size(), 2);
+        CHECK_EQ(actual_command[0], "127.0.0.1");
+        CHECK_EQ(actual_command[1], std::to_string(client_port1));
+
+        //Check payload
+        CHECK_EQ(actual_payload.size(), 0);
+
+
+        // Erase key from node 0, expect ask response
+        processed = std::async(process_instruction, std::ref(server0), client_port0);
+        std::this_thread::sleep_for(100ms);
+        sent = std::async(send_instruction, client_port0, protocol::command{ other_key_slot_0 }, protocol::Instruction::c_ERASE, "");
+        std::tie(actual_metadata, actual_command, actual_payload) = sent.get();
+        processed.get();
+
+        CHECK_EQ(1, server0.get_kvs().get_size());
+        CHECK_EQ(1, server0.get_cluster_state().slots[0].amount_of_keys);
+        CHECK_EQ(1, server1.get_kvs().get_size());
+        CHECK_EQ(1, server1.get_cluster_state().slots[0].amount_of_keys);
+        CHECK_EQ(SlotState::c_MIGRATING, server0.get_cluster_state().slots[0].state);
+        CHECK_EQ(SlotState::c_IMPORTING, server1.get_cluster_state().slots[0].state);
+
+        //Check metadata
+        CHECK_EQ(actual_metadata.argc, 2);
+        CHECK_EQ(actual_metadata.command_size, 8 + 9 + 8 + 4);
+        CHECK_EQ(actual_metadata.payload_size, 0);
+        CHECK_EQ(actual_metadata.instruction, protocol::Instruction::c_ASK);
+
+        //Check command
+        CHECK_EQ(actual_command.size(), 2);
+        CHECK_EQ(actual_command[0], "127.0.0.1");
+        CHECK_EQ(actual_command[1], std::to_string(client_port1));
+
+        //Check payload
+        CHECK_EQ(actual_payload.size(), 0);
+
+
+
+        // Erase only key from node0, expect ok and slot state change to normal and not served by node0
+        processed = std::async(process_instruction, std::ref(server0), client_port0);
+        std::this_thread::sleep_for(100ms);
+        sent = std::async(send_instruction, client_port0, protocol::command{ key_slot_0 }, protocol::Instruction::c_ERASE, "");
+        std::tie(actual_metadata, actual_command, actual_payload) = sent.get();
+        processed.get();
+
+        CHECK_EQ(0, server0.get_kvs().get_size());
+        CHECK_EQ(0, server0.get_cluster_state().slots[0].amount_of_keys);
+        CHECK_EQ(1, server1.get_kvs().get_size());
+        CHECK_EQ(1, server1.get_cluster_state().slots[0].amount_of_keys);
+        CHECK_EQ(SlotState::c_NORMAL, server0.get_cluster_state().slots[0].state);
+        CHECK_EQ(SlotState::c_IMPORTING, server1.get_cluster_state().slots[0].state); //TODO: Change
+
+        CHECK_FALSE(server0.get_cluster_state().myself.served_slots[0]);
+        CHECK_EQ(0, server0.get_cluster_state().myself.num_slots_served);
+        CHECK_EQ(nullptr, server0.get_cluster_state().slots[0].migration_partner);
+
+        //Check metadata
+        CHECK_EQ(actual_metadata.argc, 0);
+        CHECK_EQ(actual_metadata.command_size, 0);
+        CHECK_EQ(actual_metadata.payload_size, 0);
+        CHECK_EQ(actual_metadata.instruction, protocol::Instruction::c_OK_RESPONSE);
+
+        //Check command
+        CHECK_EQ(actual_command.size(), 0);
 
         //Check payload
         CHECK_EQ(actual_payload.size(), 0);
