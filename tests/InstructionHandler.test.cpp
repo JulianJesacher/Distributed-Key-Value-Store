@@ -37,17 +37,18 @@ std::pair<std::string, protocol::MetaData> get_command_and_metadata(protocol::In
 TEST_CASE("Test put") {
     //Test return value
     key_value_store::InMemoryKVS kvs{};
-    ByteArray ba{};
-    Status st = kvs.get("key", ba);
     cluster::ClusterState cluster_state{};
+    int port{ 3000 };
     cluster_state.myself = cluster::ClusterNode{};
+    cluster_state.slots.resize(cluster::CLUSTER_AMOUNT_OF_SLOTS);
     for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; ++i) {
         cluster_state.myself.served_slots[i] = true;
     }
 
+    ByteArray ba{};
+    Status st = kvs.get("key", ba);
     CHECK_EQ(kvs.get_size(), 0);
     CHECK(st.is_not_found());
-    int port{ 3000 };
 
     auto send_command = [&](std::string v) {
         net::Socket client{};
@@ -152,6 +153,7 @@ TEST_CASE("Test get") {
     key_value_store::InMemoryKVS kvs{};
     cluster::ClusterState cluster_state{};
     cluster_state.myself = cluster::ClusterNode{};
+    cluster_state.slots.resize(cluster::CLUSTER_AMOUNT_OF_SLOTS);
     for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; ++i) {
         cluster_state.myself.served_slots[i] = true;
     }
@@ -180,7 +182,6 @@ TEST_CASE("Test get") {
         instruction_handler::handle_get(c, command, kvs, cluster_state);
     };
 
-
     SUBCASE("Check for error when not found") {
         //GET key:"key" size:"5" offset:"0"
         //Metadata: argc:3 instruction:GET command_size:17 payload_size:0
@@ -189,6 +190,7 @@ TEST_CASE("Test get") {
         auto processed = std::async(process_command, sent_command);
         std::this_thread::sleep_for(100ms);
         auto sent = std::async(send_command);
+
         processed.get();
         auto [actual_metadata, actual_command, actual_payload] = sent.get();
 
@@ -205,7 +207,6 @@ TEST_CASE("Test get") {
         CHECK_EQ(27, actual_payload.size());
         CHECK_EQ("The given key was not found", actual_payload.to_string());
     }
-
 
     SUBCASE("Check for correct response when found") {
         //GET key:"key" size:"5" offset:"0"
@@ -243,6 +244,7 @@ TEST_CASE("Test get") {
 TEST_CASE("Test erase") {
     key_value_store::InMemoryKVS kvs{};
     cluster::ClusterState cluster_state{};
+    cluster_state.slots.resize(cluster::CLUSTER_AMOUNT_OF_SLOTS);
     cluster_state.myself = cluster::ClusterNode{};
     for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; ++i) {
         cluster_state.myself.served_slots[i] = true;
