@@ -408,3 +408,150 @@ TEST_CASE("Test meet") {
 
     std::cout << actual_payload.to_string() << std::endl;
 }
+
+TEST_CASE("check migrate / import slot") {
+    using ClusterState = cluster::ClusterState;
+    using ClusterNode = cluster::ClusterNode;
+    using Slot = cluster::Slot;
+    using SlotState = cluster::SlotState;
+
+    uint16_t cluster_port{ 4000 };
+    uint16_t client_port{ 3000 };
+    ClusterNode node1{ "node1", "127.0.0.1", cluster_port, client_port };
+    node1.served_slots[0] = true;
+    std::unordered_map<std::string, ClusterNode> nodes{
+        {"node1", node1},
+    };
+    ClusterState cluster_state1{ nodes, 2, std::vector<Slot>(3), node1 };
+
+    auto handle_request = [&](auto handler, protocol::command& command, ClusterState& cluster_state) {
+        net::Socket server{};
+        if (!net::is_listening(server.fd())) {
+            server.listen(client_port);
+        }
+
+        net::Connection c = server.accept();
+        handler(c, command, cluster_state1);
+    };
+
+    auto get_response = [&]() {
+        net::Socket client{};
+        net::Connection c = client.connect(client_port);
+
+        auto metadata = protocol::get_metadata(c);
+        auto command = protocol::get_command(c, metadata.argc, metadata.command_size);
+        ByteArray payload = protocol::get_payload(c, metadata.payload_size);
+
+        return std::make_tuple(metadata, command, payload);
+    };
+
+    SUBCASE("Test failure already migrating") {
+        protocol::command command{ "0", "127.0.0.1", "5000" };
+        cluster_state1.slots[0].state = SlotState::c_MIGRATING;
+
+        //Check migrate slot
+        auto processed = std::async(handle_request, instruction_handler::handle_migrate_slot, std::ref(command), std::ref(cluster_state1));
+        std::this_thread::sleep_for(100ms);
+        auto response = std::async(get_response);
+
+        auto [actual_metadata, actual_command, actual_payload] = response.get();
+        processed.get();
+        std::string expected_error{"Slot already in process of migrating"};
+
+        //Check metadata
+        CHECK_EQ(0, actual_metadata.argc);
+        CHECK_EQ(protocol::Instruction::c_ERROR_RESPONSE, actual_metadata.instruction);
+        CHECK_EQ(0, actual_metadata.command_size);
+        CHECK_EQ(expected_error.size(), actual_metadata.payload_size);
+
+        //Check command
+        CHECK_EQ(0, actual_command.size());
+
+        //Check payload
+        CHECK_EQ(expected_error, actual_payload.to_string());
+    }
+
+    SUBCASE("Test failure other node not in cluster") {
+        protocol::command command{ "0", "127.0.0.1", "5000" };
+
+        //Check migrate slot
+        auto processed = std::async(handle_request, instruction_handler::handle_migrate_slot, std::ref(command), std::ref(cluster_state1));
+        std::this_thread::sleep_for(100ms);
+        auto response = std::async(get_response);
+
+        auto [actual_metadata, actual_command, actual_payload] = response.get();
+        processed.get();
+        std::string expected_error{"Other node not part of the cluster"};
+
+        //Check metadata
+        CHECK_EQ(0, actual_metadata.argc);
+        CHECK_EQ(protocol::Instruction::c_ERROR_RESPONSE, actual_metadata.instruction);
+        CHECK_EQ(0, actual_metadata.command_size);
+        CHECK_EQ(expected_error.size(), actual_metadata.payload_size);
+
+        //Check command
+        CHECK_EQ(0, actual_command.size());
+
+        //Check payload
+        CHECK_EQ(expected_error, actual_payload.to_string());
+    }
+
+    SUBCASE("Test correct migrating") {
+        ClusterNode other_node{ "node2", "127.0.0.1", cluster_port, 5000 };
+        cluster_state1.nodes["node2"] = other_node;
+        cluster_state1.slots[0].amount_of_keys = 1;
+        protocol::command command{ "0", "127.0.0.1", "5000" };
+
+
+        //Check migrate slot
+        auto processed = std::async(handle_request, instruction_handler::handle_migrate_slot, std::ref(command), std::ref(cluster_state1));
+        std::this_thread::sleep_for(100ms);
+        auto response = std::async(get_response);
+
+        auto [actual_metadata, actual_command, actual_payload] = response.get();
+        processed.get();
+
+        CHECK_EQ(SlotState::c_MIGRATING, cluster_state1.slots[0].state);
+
+        //Check metadata
+        CHECK_EQ(0, actual_metadata.argc);
+        CHECK_EQ(protocol::Instruction::c_OK_RESPONSE, actual_metadata.instruction);
+        CHECK_EQ(0, actual_metadata.command_size);
+        CHECK_EQ(0, actual_metadata.payload_size);
+
+        //Check command
+        CHECK_EQ(0, actual_command.size());
+
+        //Check payload
+        CHECK_EQ(0, actual_payload.size());
+    }
+
+    SUBCASE("Test correct importing") {
+        ClusterNode other_node{ "node2", "127.0.0.1", cluster_port, 5000 };
+        cluster_state1.nodes["node2"] = other_node;
+        protocol::command command{ "0", "127.0.0.1", "5000" };
+
+
+        //Check migrate slot
+        auto processed = std::async(handle_request, instruction_handler::handle_import_slot, std::ref(command), std::ref(cluster_state1));
+        std::this_thread::sleep_for(100ms);
+        auto response = std::async(get_response);
+
+        auto [actual_metadata, actual_command, actual_payload] = response.get();
+        processed.get();
+
+        CHECK_EQ(SlotState::c_IMPORTING, cluster_state1.slots[0].state);
+
+        //Check metadata
+        CHECK_EQ(0, actual_metadata.argc);
+        CHECK_EQ(protocol::Instruction::c_OK_RESPONSE, actual_metadata.instruction);
+        CHECK_EQ(0, actual_metadata.command_size);
+        CHECK_EQ(0, actual_metadata.payload_size);
+
+        //Check command
+        CHECK_EQ(0, actual_command.size());
+
+        //Check payload
+        CHECK_EQ(0, actual_payload.size());
+    }
+}
