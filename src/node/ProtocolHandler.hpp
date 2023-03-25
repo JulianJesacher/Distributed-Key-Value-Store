@@ -33,7 +33,8 @@ namespace node {
             c_MIGRATE_SLOT = 10,
             c_ASK = 11,
             c_NO_ASKING_ERROR = 12,
-            enum_size = 13
+            c_CLUSTER_MIGRATION_FINISHED = 13,
+            enum_size = 14
         };
 
         struct MetaData {
@@ -102,6 +103,11 @@ namespace node {
             c_OTHER_IP = 0,
             c_OTHER_CLIENT_PORT = 1,
             enum_size = 2
+        };
+
+        enum class CommandFieldsMigrationFinished {
+            c_SLOT = 0,
+            enum_size = 1
         };
 
         using CommandFieldsAsk = CommandFieldsMove;

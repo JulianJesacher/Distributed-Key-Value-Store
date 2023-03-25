@@ -10,6 +10,7 @@ using EraseFields = node::protocol::CommandFieldsErase;
 using MeetFields = node::protocol::CommandFieldsMeet;
 using MigrateFields = node::protocol::CommandFieldsMigrate;
 using ImportFields = node::protocol::CommandFieldsImport;
+using MigrationFinishedFields = node::protocol::CommandFieldsMigrationFinished;
 using Instruction = node::protocol::Instruction;
 
 namespace node::instruction_handler {
@@ -44,6 +45,11 @@ namespace node::instruction_handler {
         case Instruction::c_IMPORT_SLOT:
             if (command.size() != to_integral(ImportFields::enum_size)) {
                 return Status::new_invalid_argument("Wrong number of arguments for IMPORT_SLOT");
+            }
+            break;
+        case Instruction::c_CLUSTER_MIGRATION_FINISHED:
+            if (command.size() != to_integral(MigrationFinishedFields::enum_size)) {
+                return Status::new_invalid_argument("Wrong number of arguments for CLUSTER_MIGRATION_FINISHED");
             }
             break;
         default:
@@ -182,11 +188,14 @@ namespace node::instruction_handler {
             cluster_state.slots[slot].amount_of_keys -= 1;
 
             if (cluster_state.slots[slot].amount_of_keys == 0) {
+                cluster::ClusterNode migration_partner = *cluster_state.slots[slot].migration_partner;
+
                 cluster_state.slots[slot].state = cluster::SlotState::c_NORMAL;
                 cluster_state.slots[slot].migration_partner = nullptr;
                 cluster_state.myself.served_slots[slot] = false;
                 cluster_state.myself.num_slots_served = cluster_state.myself.served_slots.count();
-                //TODO: Send migration partner migration finished
+
+                protocol::send_instruction(migration_partner.outgoing_link, protocol::command{}, Instruction::c_CLUSTER_MIGRATION_FINISHED);
             }
         }
 
@@ -285,5 +294,16 @@ namespace node::instruction_handler {
         cluster_state.myself.served_slots[slot] = true;
         cluster_state.myself.num_slots_served = cluster_state.myself.served_slots.count();
         protocol::send_instruction(connection, Status::new_ok());
+    }
+
+    void handle_migration_finished(const protocol::command& command, cluster::ClusterState& cluster_state) {
+        Status argc_state = check_argc(command, Instruction::c_CLUSTER_MIGRATION_FINISHED);
+        if (!argc_state.is_ok()) {
+            return;
+        }
+
+        uint16_t slot = std::stoul(command[to_integral(MigrationFinishedFields::c_SLOT)]);
+        cluster_state.slots[slot].state = cluster::SlotState::c_NORMAL;
+        cluster_state.slots[slot].migration_partner = nullptr;
     }
 }

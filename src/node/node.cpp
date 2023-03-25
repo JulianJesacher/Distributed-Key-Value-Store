@@ -30,6 +30,9 @@ namespace node {
         case Instruction::c_IMPORT_SLOT:
             instruction_handler::handle_import_slot(connection, command, get_cluster_state());
             break;
+        case Instruction::c_CLUSTER_MIGRATION_FINISHED:
+            instruction_handler::handle_migration_finished(command, get_cluster_state());
+            break;
         default:
             protocol::send_instruction(connection, Status::new_not_supported("Unknown instruction"));
             break;
