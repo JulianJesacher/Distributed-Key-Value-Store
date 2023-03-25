@@ -184,7 +184,6 @@ namespace node::instruction_handler {
 
         //Update slot state
         if (state.is_ok()) {
-            uint16_t slot = cluster::get_key_hash(key) % cluster::CLUSTER_AMOUNT_OF_SLOTS;
             cluster_state.slots[slot].amount_of_keys -= 1;
 
             if (cluster_state.slots[slot].amount_of_keys == 0) {
@@ -195,7 +194,7 @@ namespace node::instruction_handler {
                 cluster_state.myself.served_slots[slot] = false;
                 cluster_state.myself.num_slots_served = cluster_state.myself.served_slots.count();
 
-                protocol::send_instruction(migration_partner.outgoing_link, protocol::command{}, Instruction::c_CLUSTER_MIGRATION_FINISHED);
+                protocol::send_instruction(migration_partner.outgoing_link, protocol::command{std::to_string(slot)}, Instruction::c_CLUSTER_MIGRATION_FINISHED);
             }
         }
 

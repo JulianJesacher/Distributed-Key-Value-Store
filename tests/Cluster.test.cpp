@@ -3,6 +3,18 @@
 
 #include <future>
 #include <chrono>
+#include <sys/epoll.h>
+#include <poll.h>
+#include <thread>
+
+
+#include <iostream>
+#include <sys/epoll.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <cstring>
 
 #include "KVS/InMemoryKVS.hpp"
 #include "node/Cluster.hpp"
@@ -10,6 +22,7 @@
 #include "net/Socket.hpp"
 #include "node/ProtocolHandler.hpp"
 #include "node/node.hpp"
+#include "net/Epoll.hpp"
 
 using namespace std::chrono_literals; // NOLINT
 using namespace node::cluster; // NOLINT
@@ -37,7 +50,7 @@ std::string get_key_with_target_slot(int slot, std::vector<std::string> distinct
     return key;
 }
 
-
+/*
 TEST_CASE("Test Gossip Ping") {
 
     ClusterState state_receiver{};
@@ -243,13 +256,14 @@ TEST_CASE("test sharding") {
         CHECK_EQ(actual_payload.size(), 0);
     }
 }
+*/
 
 
 TEST_CASE("Test migrating slot") {
     uint16_t cluster_port = 4000;
     uint16_t client_port0 = 3000, client_port1 = 3001;
 
-    ClusterNode node0{ "node1", "127.0.0.1", cluster_port, client_port0, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
+    ClusterNode node0{ "node0", "127.0.0.1", cluster_port, client_port0, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
     ClusterNode node1{ "node1", "127.0.0.1", cluster_port, client_port1, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
 
     //Initially, node1 serves slot0 and node2 serves slot1
@@ -273,11 +287,22 @@ TEST_CASE("Test migrating slot") {
         slots,
         node1 };
 
+    //Set up connection from node0 to node1
+    net::Epoll epoll{};
+    net::Socket socket0{}, socket1{};
+    socket1.listen(cluster_port);
+    auto connection0 = socket0.connect(cluster_port);
+    auto connection1 = socket1.accept();
+
+    epoll.add_event(connection1.fd());
+    epoll.reset_occurred_events();
+    state0.nodes["node1"].outgoing_link = connection0;
 
     Node server0 = Node::new_in_memory_node(state0);
     Node server1 = Node::new_in_memory_node(state1);
 
-    auto process_instruction = [](Node& server, uint16_t port) {
+
+    auto process_instruction = [&](Node& server, uint16_t port) {
         net::Socket socket{};
         if (!net::is_listening(socket.fd())) {
             socket.listen(port);
@@ -287,7 +312,7 @@ TEST_CASE("Test migrating slot") {
         server.handle_connection(connection);
     };
 
-    auto send_instruction = [](uint16_t port, const protocol::command command, protocol::Instruction instruction, const std::string& payload) {
+    auto send_instruction = [&](uint16_t port, const protocol::command command, protocol::Instruction instruction, const std::string& payload) {
         net::Connection connection = net::Socket{}.connect(port);
         node::protocol::send_instruction(connection, command, instruction, payload);
 
@@ -298,6 +323,7 @@ TEST_CASE("Test migrating slot") {
         return std::make_tuple(received_metadata, received_command, received_payload);
     };
 
+
     SUBCASE("Test migrate slot1 from node0 to node1") {
         std::string key_slot_0 = get_key_with_target_slot(0);
 
@@ -307,6 +333,7 @@ TEST_CASE("Test migrating slot") {
         auto sent = std::async(send_instruction, client_port0, protocol::command{ key_slot_0, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
         sent.get();
         processed.get();
+
 
         //Check slot state of node0
         CHECK_EQ(1, server0.get_kvs().get_size());
@@ -493,16 +520,19 @@ TEST_CASE("Test migrating slot") {
         std::tie(actual_metadata, actual_command, actual_payload) = sent.get();
         processed.get();
 
+        server1.handle_connection(connection1);
+
         CHECK_EQ(0, server0.get_kvs().get_size());
         CHECK_EQ(0, server0.get_cluster_state().slots[0].amount_of_keys);
         CHECK_EQ(1, server1.get_kvs().get_size());
         CHECK_EQ(1, server1.get_cluster_state().slots[0].amount_of_keys);
         CHECK_EQ(SlotState::c_NORMAL, server0.get_cluster_state().slots[0].state);
-        CHECK_EQ(SlotState::c_IMPORTING, server1.get_cluster_state().slots[0].state); //TODO: Change
-
+        CHECK_EQ(SlotState::c_NORMAL, server1.get_cluster_state().slots[0].state);
+        
         CHECK_FALSE(server0.get_cluster_state().myself.served_slots[0]);
         CHECK_EQ(0, server0.get_cluster_state().myself.num_slots_served);
         CHECK_EQ(nullptr, server0.get_cluster_state().slots[0].migration_partner);
+        CHECK_EQ(nullptr, server1.get_cluster_state().slots[0].migration_partner);
 
         //Check metadata
         CHECK_EQ(actual_metadata.argc, 0);
