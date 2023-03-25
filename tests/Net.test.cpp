@@ -5,12 +5,15 @@
 #include <stdexcept>
 #include <future>
 #include <random>
-
+#include <chrono>
 
 #include "net/FileDescriptor.hpp"
 #include "net/Socket.hpp"
 #include "net/Connection.hpp"
+#include "net/Epoll.hpp"
 #include "NetworkingHelper.hpp"
+
+using namespace std::chrono_literals;
 
 TEST_CASE("Test FileDescriptor") {
     static_assert(!std::is_copy_assignable_v<net::FileDescriptor>, "FileDescriptor should not be copy assignable");
@@ -62,4 +65,31 @@ TEST_CASE("Test Socket") {
     received = std::async(recv_data);
     sent = std::async(send_data);
     CHECK_EQ(received.get(), sent.get());
+}
+
+TEST_CASE("Test epoll") {
+    net::Socket server_socket{}, client_socket{};
+    uint16_t port = 3000;
+    char buf[100];
+    std::string data = "Hello World";
+
+    server_socket.listen(port);
+    CHECK(net::is_listening(server_socket.fd()));
+
+    client_socket.connect(port);
+    net::Connection connection = server_socket.accept();
+
+    net::Epoll epoll{};
+    epoll.add_event(connection.fd(), EPOLLIN | EPOLLET);
+
+    CHECK_EQ(epoll.wait(1000), 1);
+    CHECK_EQ(epoll.wait(1000), 0);
+
+    connection.send(data);
+
+    CHECK_EQ(epoll.wait(1000), 1);
+    CHECK_EQ(epoll.wait(1000), 0);
+
+    connection.receive(buf, 100);
+    CHECK_EQ(epoll.wait(1000), 0);
 }

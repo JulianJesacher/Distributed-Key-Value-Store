@@ -27,6 +27,8 @@ add_library(Networking_l
     net/Socket.cpp
     net/Connection.hpp
     net/Connection.cpp
+    net/Epoll.hpp
+    net/Epoll.cpp
 )
 target_include_directories(Networking_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -55,5 +57,7 @@ add_library(Node_l
     utils/Status.cpp
     node/node.hpp
     node/node.cpp
+    net/Epoll.hpp
+    net/Epoll.cpp
 )
 target_include_directories(Node_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
