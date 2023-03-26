@@ -7,15 +7,6 @@
 #include <poll.h>
 #include <thread>
 
-
-#include <iostream>
-#include <sys/epoll.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <cstring>
-
 #include "KVS/InMemoryKVS.hpp"
 #include "node/Cluster.hpp"
 #include "node/Cluster.cpp"
@@ -50,7 +41,6 @@ std::string get_key_with_target_slot(int slot, std::vector<std::string> distinct
     return key;
 }
 
-/*
 TEST_CASE("Test Gossip Ping") {
 
     ClusterState state_receiver{};
@@ -256,8 +246,6 @@ TEST_CASE("test sharding") {
         CHECK_EQ(actual_payload.size(), 0);
     }
 }
-*/
-
 
 TEST_CASE("Test migrating slot") {
     uint16_t cluster_port = 4000;
