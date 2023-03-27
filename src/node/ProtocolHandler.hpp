@@ -7,6 +7,7 @@
 #include "../net/Connection.hpp"
 #include "../utils/ByteArray.hpp"
 #include "../utils/Status.hpp"
+#include "../node/Cluster.hpp"
 
 namespace node {
 
@@ -34,7 +35,9 @@ namespace node {
             c_ASK = 11,
             c_NO_ASKING_ERROR = 12,
             c_CLUSTER_MIGRATION_FINISHED = 13,
-            enum_size = 14
+            c_GET_SLOTS = 14,
+            c_GET_SLOTS_RESPONSE = 15,
+            enum_size = 16
         };
 
         struct MetaData {
@@ -134,5 +137,7 @@ namespace node {
         uint64_t get_command_size(const command& command);
 
         void serialize_command(const command& command, std::span<char> buf);
+
+        void serialize_slots(const std::vector<cluster::Slot>& slots, net::Connection& connection);
     }
 }

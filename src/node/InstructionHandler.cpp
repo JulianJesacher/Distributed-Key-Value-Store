@@ -52,6 +52,11 @@ namespace node::instruction_handler {
                 return Status::new_invalid_argument("Wrong number of arguments for CLUSTER_MIGRATION_FINISHED");
             }
             break;
+        case Instruction::c_GET_SLOTS:
+            if (command.size() != 0) {
+                return Status::new_invalid_argument("Wrong number of arguments for GET_SLOTS");
+            }
+            break;
         default:
             return Status::new_invalid_argument("Unknown instruction");
         }
@@ -304,5 +309,15 @@ namespace node::instruction_handler {
         uint16_t slot = std::stoul(command[to_integral(MigrationFinishedFields::c_SLOT)]);
         cluster_state.slots[slot].state = cluster::SlotState::c_NORMAL;
         cluster_state.slots[slot].migration_partner = nullptr;
+    }
+
+    void handle_get_slots(net::Connection& connection, const protocol::command& command, cluster::ClusterState& cluster_state) {
+        Status argc_state = check_argc(command, Instruction::c_GET_SLOTS);
+        if (!argc_state.is_ok()) {
+            protocol::send_instruction(connection, argc_state);
+            return;
+        }
+
+        protocol::serialize_slots(cluster_state.slots, connection);
     }
 }

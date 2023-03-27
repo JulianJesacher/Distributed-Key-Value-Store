@@ -108,4 +108,64 @@ namespace node::protocol {
             offset += size;
         }
     }
+
+    void write_slot_to_buffer(observer_ptr<cluster::ClusterNode> node, std::span<char> data, uint64_t& offset, int slot_number) {
+        //Add end slot range
+        data.data()[offset++] = '\t';
+        std::string end_slot = std::to_string(slot_number - 1);
+        std::memcpy(data.data() + offset, end_slot.data(), end_slot.size());
+        offset += end_slot.size();
+
+        //Add ip
+        data.data()[offset++] = '\t';
+        std::string ip = "NULL";
+        if (node != nullptr) {
+            ip = std::string((*node).ip.data());
+        }
+        std::memcpy(data.data() + offset, ip.data(), ip.size());
+        offset += ip.size();
+
+        //Add port
+        if (node != nullptr) {
+            data.data()[offset++] = ':';
+            std::string port = std::to_string((*node).client_port);
+            std::memcpy(data.data() + offset, port.data(), port.size());
+            offset += port.size();
+        }
+    }
+
+    //<Slot-begin>\t<Slot-end>\t<ip:port>\n
+    void serialize_slots(const std::vector<cluster::Slot>& slots, net::Connection& connection) {
+        uint64_t offset = 0;
+        char buf[(5 + 1 + 5 + 1 + 15 + 1 + 5 + 1) * slots.size()];
+        std::span<char> data(buf, sizeof(buf));
+        observer_ptr<cluster::ClusterNode> prev_node = nullptr;
+
+        for (int slot_number = 0; slot_number < slots.size(); ++slot_number) {
+            const auto& slot = slots[slot_number];
+            if (slot_number == 0) {
+                data.data()[offset++] = '0';
+                prev_node = slot.served_by;
+            }
+            //The last slot always needs to be written
+            if (slot.served_by == prev_node) {
+                continue;
+            }
+
+            //New slot range begins, finish old one
+            write_slot_to_buffer(prev_node, data, offset, slot_number);
+            prev_node = slot.served_by;
+
+            //Add start of next slot range
+            data.data()[offset++] = '\n';
+            std::string begin_slot = std::to_string(slot_number);
+            std::memcpy(data.data() + offset, begin_slot.data(), begin_slot.size());
+            offset += begin_slot.size();
+        }
+
+        //Write last slot range
+        write_slot_to_buffer(prev_node, data, offset, slots.size());
+
+        protocol::send_instruction(connection, {}, protocol::Instruction::c_GET_SLOTS_RESPONSE, data.data(), offset);
+    }
 }

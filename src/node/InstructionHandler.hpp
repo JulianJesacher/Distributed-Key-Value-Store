@@ -21,4 +21,6 @@ namespace node::instruction_handler {
     void handle_import_slot(net::Connection& connection, const protocol::command& command, cluster::ClusterState& cluster_state);
 
     void handle_migration_finished(const protocol::command& command, cluster::ClusterState& cluster_state);
+
+    void handle_get_slots(net::Connection& connection, const protocol::command& command, cluster::ClusterState& cluster_state);
 }

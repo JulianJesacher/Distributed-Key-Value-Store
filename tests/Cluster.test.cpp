@@ -519,7 +519,7 @@ TEST_CASE("Test migrating slot") {
         CHECK_EQ(1, server1.get_cluster_state().slots[0].amount_of_keys);
         CHECK_EQ(SlotState::c_NORMAL, server0.get_cluster_state().slots[0].state);
         CHECK_EQ(SlotState::c_NORMAL, server1.get_cluster_state().slots[0].state);
-        
+
         CHECK_FALSE(server0.get_cluster_state().myself.served_slots[0]);
         CHECK_EQ(0, server0.get_cluster_state().myself.num_slots_served);
         CHECK_EQ(nullptr, server0.get_cluster_state().slots[0].migration_partner);
@@ -537,4 +537,63 @@ TEST_CASE("Test migrating slot") {
         //Check payload
         CHECK_EQ(actual_payload.size(), 0);
     }
+}
+
+
+TEST_CASE("Test get slots") {
+    Node server{};
+    cluster::ClusterState& state = server.get_cluster_state();
+    uint16_t server_port = 3000;
+
+    cluster::ClusterNode node1{ "node1", "127.0.0.1", 4000, 3001 };
+    cluster::ClusterNode node2{ "node2", "127.0.0.1", 4000, 3002 };
+    cluster::ClusterNode node3{ "node3", "127.0.0.100", 4000, 3003 };
+
+    state.slots.resize(5);
+    state.slots[1].served_by = &node1;
+    state.slots[2].served_by = &node2;
+    state.slots[3].served_by = &node3;
+
+    auto send_instruction = [&server_port]() {
+        auto connection = net::Socket{}.connect(server_port);
+        protocol::send_instruction(connection, protocol::command{}, protocol::Instruction::c_GET_SLOTS, "");
+
+        auto received_metadata = protocol::get_metadata(connection);
+        auto received_command = protocol::get_command(connection, received_metadata.argc, received_metadata.command_size);
+        ByteArray received_payload = protocol::get_payload(connection, received_metadata.payload_size);
+
+        return std::make_tuple(received_metadata, received_command, received_payload);
+    };
+
+    auto handle_request = [&server_port, &server]() {
+        net::Socket socket{};
+        if (!net::is_listening(socket.fd())) {
+            socket.listen(server_port);
+        }
+
+        net::Connection connection = socket.accept();
+        server.handle_connection(connection);
+    };
+
+
+    auto processed = std::async(handle_request);
+    std::this_thread::sleep_for(100ms);
+    auto sent = std::async(send_instruction);
+    auto [actual_metadata, actual_command, actual_payload] = sent.get();
+    processed.get();
+
+    //Check metadata
+    CHECK_EQ(actual_metadata.argc, 0);
+    CHECK_EQ(actual_metadata.command_size, 0);
+    CHECK_EQ(actual_metadata.payload_size, 76);
+    CHECK_EQ(actual_metadata.instruction, protocol::Instruction::c_GET_SLOTS_RESPONSE);
+
+    //Check command
+    CHECK_EQ(actual_command.size(), 0);
+
+    //Check payload
+    CHECK_EQ(actual_payload.size(), 76);
+    //0 0 NULL 1 1 127.0.0.1:3001 2 2 127.0.0.1:3002 3 3 127.0.0.100:3003 4 4 NULL 
+    std::string expected_payload = "0\t0\tNULL\n1\t1\t127.0.0.1:3001\n2\t2\t127.0.0.1:3002\n3\t3\t127.0.0.100:3003\n4\t4\tNULL";
+    CHECK_EQ(actual_payload.to_string(), expected_payload);
 }

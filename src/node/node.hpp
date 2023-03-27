@@ -11,6 +11,11 @@ namespace node {
     class Node {
     public:
 
+        Node() {
+            kvs_ = std::make_unique<key_value_store::InMemoryKVS>();
+            cluster_state_ = cluster::ClusterState();
+        }
+
         Node(std::unique_ptr<key_value_store::IKeyValueStore> kvs, cluster::ClusterState state) {
             kvs_ = std::move(kvs);
             cluster_state_ = state;
