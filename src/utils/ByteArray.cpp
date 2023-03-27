@@ -11,7 +11,7 @@ AllocatedByteArrayResource::AllocatedByteArrayResource(uint64_t size) {
 
 // NOLINTNEXTLINE
 AllocatedByteArrayResource::AllocatedByteArrayResource(const char* data, uint64_t size, DeepCopyTag tag): AllocatedByteArrayResource(size) {
-    memcpy(data_, data, size);
+    std::memcpy(data_, data, size);
 }
 
 // NOLINTNEXTLINE
@@ -36,7 +36,7 @@ AllocatedByteArrayResource& AllocatedByteArrayResource::operator=(const Allocate
 
     data_ = new char[other.size_];
     size_ = other.size_;
-    memcpy(data_, other.data_, other.size_);
+    std::memcpy(data_, other.data_, other.size_);
     return *this;
 }
 
@@ -61,7 +61,7 @@ void AllocatedByteArrayResource::resize(uint64_t target_size) {
     }
 
     char* new_data = new char[target_size];
-    memcpy(new_data, data_, std::min(target_size, size_));
+    std::memcpy(new_data, data_, std::min(target_size, size_));
     delete[] data_;
     data_ = new_data;
     size_ = target_size;
@@ -87,7 +87,7 @@ void ByteArray::insert_byte_array(const ByteArray& other, uint64_t offset) {
     if (offset + other.size() > size()) {
         resource_ = std::make_shared<AllocatedByteArrayResource>(resource_->data(), size() + other.size(), IByteArrayResource::DeepCopyTag{});
     }
-    memcpy(resource_->data() + offset, other.data(), other.size());
+    std::memcpy(resource_->data() + offset, other.data(), other.size());
 }
 
 void ByteArray::resize(uint64_t target_size) {

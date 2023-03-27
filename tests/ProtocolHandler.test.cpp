@@ -13,13 +13,21 @@
 using namespace  std::chrono_literals;
 
 TEST_CASE("Get Metadata") {
-    node::protocol::MetaData m{1, node::protocol::Instruction::c_GET, 3, 4};
+    node::protocol::MetaData meta_data{1, node::protocol::Instruction::c_GET, 3, 4};
+
+    //Convert metadata to network byte order
+    node::protocol::MetaData converted_meta_data = meta_data;
+    converted_meta_data.argc = htons(meta_data.argc);
+    converted_meta_data.command_size = htobe64(meta_data.command_size);
+    converted_meta_data.payload_size = htobe64(meta_data.payload_size);
+
+
     net::Socket socket{};
     int port{ 3000 };
 
     auto send_metadata = [&]() {
-        networkingHelper::send(port, reinterpret_cast<const char*>(&m), sizeof(m));
-        return m;
+        networkingHelper::send(port, reinterpret_cast<const char*>(&converted_meta_data), sizeof(converted_meta_data));
+        return meta_data;
     };
 
     auto parse_metadata = [&]() {
@@ -32,14 +40,13 @@ TEST_CASE("Get Metadata") {
     std::this_thread::sleep_for(100ms);
     auto sent = std::async(send_metadata);
 
-    auto sent_data = sent.get();
     auto received_data = received.get();
 
-    CHECK(memcmp(&sent_data, &received_data, sizeof(sent_data)) == 0);
-    CHECK_EQ(m.argc, received_data.argc);
-    CHECK_EQ(m.instruction, received_data.instruction);
-    CHECK_EQ(m.command_size, received_data.command_size);
-    CHECK_EQ(m.payload_size, received_data.payload_size);
+    CHECK(memcmp(&meta_data, &received_data, sizeof(meta_data)) == 0);
+    CHECK_EQ(meta_data.argc, received_data.argc);
+    CHECK_EQ(meta_data.instruction, received_data.instruction);
+    CHECK_EQ(meta_data.command_size, received_data.command_size);
+    CHECK_EQ(meta_data.payload_size, received_data.payload_size);
 }
 
 
@@ -50,18 +57,23 @@ TEST_CASE("Get Commands") {
     constexpr int command_size = 36; //arg1_len, arg1, arg2_len, arg2, arg3_len, arg3;
     std::array<char, command_size> command_data;
 
+    //Convert size to network byte order
+    uint64_t converted_arg1_len = htobe64(arg1_len);
+    uint64_t converted_arg2_len = htobe64(arg2_len);
+    uint64_t converted_arg3_len = htobe64(arg3_len);
+
     //Create buffer with command data
     int offset{ 0 };
-    std::memcpy(command_data.data() + offset, &arg1_len, sizeof(arg1_len));
-    offset += sizeof(arg1_len);
+    std::memcpy(command_data.data() + offset, &converted_arg1_len, sizeof(converted_arg1_len));
+    offset += sizeof(converted_arg1_len);
     std::memcpy(command_data.data() + offset, arg1.data(), arg1_len);
     offset += arg1_len;
-    std::memcpy(command_data.data() + offset, &arg2_len, sizeof(arg2_len));
-    offset += sizeof(arg2_len);
+    std::memcpy(command_data.data() + offset, &converted_arg2_len, sizeof(converted_arg2_len));
+    offset += sizeof(converted_arg2_len);
     std::memcpy(command_data.data() + offset, arg2.data(), arg2_len);
     offset += arg2_len;
-    std::memcpy(command_data.data() + offset, &arg3_len, sizeof(arg3_len));
-    offset += sizeof(arg3_len);
+    std::memcpy(command_data.data() + offset, &converted_arg3_len, sizeof(converted_arg3_len));
+    offset += sizeof(converted_arg3_len);
     std::memcpy(command_data.data() + offset, arg3.data(), arg3_len);
 
 

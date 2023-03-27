@@ -41,6 +41,7 @@ std::string get_key_with_target_slot(int slot, std::vector<std::string> distinct
     return key;
 }
 
+
 TEST_CASE("Test Gossip Ping") {
 
     ClusterState state_receiver{};
@@ -117,6 +118,7 @@ TEST_CASE("Test Gossip Ping") {
     }
 
 }
+
 
 TEST_CASE("Hashing") {
     auto expected = static_cast<uint16_t>(std::hash<std::string>{}("test"));
@@ -246,6 +248,7 @@ TEST_CASE("test sharding") {
         CHECK_EQ(actual_payload.size(), 0);
     }
 }
+
 
 TEST_CASE("Test migrating slot") {
     uint16_t cluster_port = 4000;

@@ -19,7 +19,7 @@ TEST_CASE("Test AllocatedByteArrayResource") {
 
     SUBCASE("Copy Resource") {
         char* buf = new char[test_string_length];
-        memcpy(buf, test_string.c_str(), test_string_length);
+        std::memcpy(buf, test_string.c_str(), test_string_length);
 
         AllocatedByteArrayResource a(buf, test_string_length, IByteArrayResource::DeepCopyTag{});
         AllocatedByteArrayResource b(a);
@@ -32,7 +32,7 @@ TEST_CASE("Test AllocatedByteArrayResource") {
 
     SUBCASE("Move Resource") {
         char* buf = new char[test_string_length];
-        memcpy(buf, test_string.c_str(), test_string_length);
+        std::memcpy(buf, test_string.c_str(), test_string_length);
 
         AllocatedByteArrayResource a(buf, test_string_length, IByteArrayResource::DeepCopyTag{});
         AllocatedByteArrayResource b = std::move(a);
@@ -62,7 +62,7 @@ TEST_CASE("Test ByteArray")
     {
         ByteArray ba = ByteArray::new_allocated_byte_array(test_string_length);
         CHECK_EQ(ba.size(), test_string_length);
-        memcpy(ba.data(), test_string.c_str(), test_string_length);
+        std::memcpy(ba.data(), test_string.c_str(), test_string_length);
         CHECK(memcmp(ba.data(), test_string.c_str(), test_string_length) == 0);
     }
 

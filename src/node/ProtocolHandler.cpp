@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <cstring>
+#include <endian.h>
 
 #include "ProtocolHandler.hpp"
 
@@ -8,6 +9,12 @@ namespace node::protocol {
     MetaData get_metadata(net::Connection& connection) {
         MetaData meta_data;
         connection.receive(reinterpret_cast<char*>(&meta_data), sizeof(MetaData));
+
+        //Convert to host byte order
+        meta_data.argc = ntohs(meta_data.argc);
+        meta_data.command_size = be64toh(meta_data.command_size);
+        meta_data.payload_size = be64toh(meta_data.payload_size);
+
         return meta_data;
     }
 
@@ -23,7 +30,10 @@ namespace node::protocol {
 
         command command(argc);
         for (int i = 0; i < argc; ++i) {
-            auto size = static_cast<uint64_t>(*it);
+            uint64_t size;
+            std::memcpy(&size, &(*it), sizeof(uint64_t));
+            size = be64toh(size);
+
             it += sizeof(uint64_t);
             command[i] = std::string(it, it + size);
             it += size;
@@ -43,7 +53,12 @@ namespace node::protocol {
 
     void send_instruction(net::Connection& connection, const command& command, Instruction i, const char* payload, uint64_t payload_size) {
         uint64_t command_size = get_command_size(command);
-        MetaData meta_data{ static_cast<uint16_t>(command.size()), i, command_size, payload_size };
+        MetaData meta_data{ };
+        meta_data.instruction = i; //TODO:
+        meta_data.argc = htons(static_cast<uint16_t>(command.size()));
+        meta_data.command_size = htobe64(command_size);
+        meta_data.payload_size = htobe64(payload_size);
+
 
         //Concatenate metadata and command to save one send() syscall
         uint64_t size_without_payload = sizeof(meta_data) + command_size;
@@ -85,8 +100,10 @@ namespace node::protocol {
         uint64_t offset = 0;
         for (const auto& c : command) {
             uint64_t size = c.size();
-            std::memcpy(buf.data() + offset, &size, sizeof(uint64_t));
+            uint64_t converted_size = htobe64(size);
+            std::memcpy(buf.data() + offset, &converted_size, sizeof(uint64_t));
             offset += sizeof(uint64_t);
+            
             std::memcpy(buf.data() + offset, c.data(), size);
             offset += size;
         }
