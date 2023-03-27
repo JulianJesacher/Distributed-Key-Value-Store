@@ -19,7 +19,7 @@ namespace node {
 
         // Package structure: metadata | command_1_size | command_1 | command_2_size | command_2 | ... | payload_size | payload
         // commandX_size is of type uint64_t
-        enum class Instruction: uint16_t {
+        enum class Instruction: uint8_t {
             c_PUT = 0,
             c_GET = 1,
             c_ERASE = 2,

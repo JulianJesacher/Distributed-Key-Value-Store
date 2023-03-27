@@ -53,8 +53,8 @@ namespace node::protocol {
 
     void send_instruction(net::Connection& connection, const command& command, Instruction i, const char* payload, uint64_t payload_size) {
         uint64_t command_size = get_command_size(command);
-        MetaData meta_data{ };
-        meta_data.instruction = i; //TODO:
+        MetaData meta_data{};
+        meta_data.instruction = i;
         meta_data.argc = htons(static_cast<uint16_t>(command.size()));
         meta_data.command_size = htobe64(command_size);
         meta_data.payload_size = htobe64(payload_size);
@@ -103,7 +103,7 @@ namespace node::protocol {
             uint64_t converted_size = htobe64(size);
             std::memcpy(buf.data() + offset, &converted_size, sizeof(uint64_t));
             offset += sizeof(uint64_t);
-            
+
             std::memcpy(buf.data() + offset, c.data(), size);
             offset += size;
         }
