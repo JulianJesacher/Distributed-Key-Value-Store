@@ -2,17 +2,14 @@
 
 namespace client {
 
-    Client::Client(): socket_(std::make_optional<net::Socket>()) {
+    void Client::connect_to_node(const std::string& ip, int port) {
+        net::Socket socket{};
+        std::string ip_port = ip + ":" + std::to_string(port);
+        nodes_connections_.emplace(ip_port, socket.connect(ip, port));
     }
 
-    net::Connection Client::connect(const std::string& destination, uint16_t port) {
-        net::Connection res = socket_.value().connect(destination, port);
-        socket_.reset();
-        return res;
-    }
-
-    net::Connection Client::connect(uint16_t port) {
-        return connect("127.0.0.1", port);
+    void Client::disconnect_all() {
+        nodes_connections_.clear();
     }
 
 }  // namespace client
