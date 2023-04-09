@@ -26,14 +26,25 @@ namespace net {
     }
 
     void Epoll::reset_occurred_events() {
-        wait(0);
+        auto tmp = wait(0);
     }
 
     int Epoll::wait(int timeout) {
         return epoll_wait(epoll_fd_.unwrap(), events_.data(), max_events_, timeout);
     }
 
-    std::vector<epoll_event> Epoll::events() {
+    std::vector<epoll_event> Epoll::get_events() {
         return events_;
+    }
+
+    int Epoll::get_event_fd(int index) const {
+        if (index >= events_.size()) {
+            return -1;
+        }
+        return events_[index].data.fd;
+    }
+
+    int Epoll::get_epoll_fd() const {
+        return epoll_fd_.unwrap();
     }
 }
