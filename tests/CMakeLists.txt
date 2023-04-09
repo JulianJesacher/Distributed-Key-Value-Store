@@ -23,3 +23,6 @@ add_test(instructionHandlerTest Node_l InstructionHandler.test.cpp)
 
 #Cluster Test
 add_test(clusterTest Node_l Cluster.test.cpp)
+
+#Client Test
+add_test(clientTest Client_l Client.test.cpp)

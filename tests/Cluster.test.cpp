@@ -593,7 +593,8 @@ TEST_CASE("Test get slots") {
 
     //Check payload
     CHECK_EQ(actual_payload.size(), 76);
-    //0 0 NULL 1 1 127.0.0.1:3001 2 2 127.0.0.1:3002 3 3 127.0.0.100:3003 4 4 NULL 
+    //0 0 NULL 1 1 127.0.0.1:3001 2 2 127.0.0.1:3002 3 3 127.0.0.100:3003 4 4 NULL
     std::string expected_payload = "0\t0\tNULL\n1\t1\t127.0.0.1:3001\n2\t2\t127.0.0.1:3002\n3\t3\t127.0.0.100:3003\n4\t4\tNULL";
     CHECK_EQ(actual_payload.to_string(), expected_payload);
 }
+

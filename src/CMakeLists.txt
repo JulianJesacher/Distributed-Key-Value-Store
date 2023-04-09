@@ -61,3 +61,35 @@ add_library(Node_l
     net/Epoll.cpp
 )
 target_include_directories(Node_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+#Client library
+add_library(Client_l
+    client/Client.hpp
+    client/Client.cpp
+    node/ProtocolHandler.hpp
+    node/ProtocolHandler.cpp
+    node/Cluster.hpp
+    node/Cluster.cpp
+    net/FileDescriptor.hpp
+    net/FileDescriptor.cpp
+    net/Socket.hpp
+    net/Socket.cpp
+    net/Connection.hpp
+    net/Connection.cpp
+    client/Client.hpp
+    client/Client.cpp
+    utils/ByteArray.hpp
+    utils/ByteArray.cpp
+    node/InstructionHandler.hpp
+    node/InstructionHandler.cpp
+    KVS/IKeyValueStore.hpp
+    KVS/InMemoryKVS.hpp
+    KVS/InMemoryKVS.cpp
+    utils/Status.hpp
+    utils/Status.cpp
+    node/node.hpp
+    node/node.cpp
+    net/Epoll.hpp
+    net/Epoll.cpp
+)
+target_include_directories(Client_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
