@@ -10,6 +10,47 @@ using command = node::protocol::command;
 using Instruction = node::protocol::Instruction;
 
 namespace node {
+
+    Node::Node(std::unique_ptr<key_value_store::IKeyValueStore> kvs, cluster::ClusterState state, int client_port, int cluster_port) {
+        kvs_ = std::move(kvs);
+        cluster_state_ = state;
+        client_port_ = client_port;
+        cluster_port_ = cluster_port;
+    }
+
+    void Node::main_loop() {
+        net::Socket client_socket{}, cluster_socket{};
+
+        client_socket.set_non_blocking();
+        cluster_socket.set_non_blocking();
+
+        client_socket.listen(client_port_);
+        cluster_socket.listen(cluster_port_);
+
+        connections_epoll_.add_event(client_socket.fd(), EPOLLIN | EPOLLET);
+        connections_epoll_.add_event(cluster_socket.fd(), EPOLLIN | EPOLLET);
+
+        while (running_) {
+            int num_ready = connections_epoll_.wait(NODE_WAIT_TIMEOUT);
+            for (int i = 0; i < num_ready; i++) {
+                int fd = connections_epoll_.get_event_fd(i);
+
+                //New connection
+                if (fd == client_socket.fd() || fd == cluster_socket.fd()) {
+                    net::Connection connection = client_socket.accept();
+                    connections_epoll_.add_event(connection.fd(), EPOLLIN | EPOLLET);
+                    fd_to_connection_[connection.fd()] = connection;
+                }
+
+                //Existing connection
+                else {
+                    net::Connection& connection = fd_to_connection_[fd];
+                    handle_connection(connection);
+                }
+            }
+        }
+    }
+
     void Node::execute_instruction(net::Connection& connection, const MetaData& meta_data, const command& command) {
         switch (meta_data.instruction) {
         case Instruction::c_PUT:
