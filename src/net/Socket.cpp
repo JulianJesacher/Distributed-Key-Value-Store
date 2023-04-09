@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <stdexcept>
 #include <cerrno>
+#include <fcntl.h>
 
 #include "Socket.hpp"
 
@@ -45,6 +46,15 @@ namespace net {
         if (::listen(fd_.unwrap(), queue_size)) {
             throw std::runtime_error("failed to listen: " + std::to_string(errno));
         }
+    }
+
+    bool Socket::set_non_blocking() const {
+        int flags = fcntl(fd_.unwrap(), F_GETFL, 0);
+        if (flags == -1) {
+            return false;
+        }
+        flags |= O_NONBLOCK;
+        return fcntl(fd_.unwrap(), F_SETFL, flags) == 0;
     }
 
     Connection Socket::accept() const {

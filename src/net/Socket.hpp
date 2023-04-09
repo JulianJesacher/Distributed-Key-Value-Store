@@ -19,6 +19,8 @@ namespace net {
 
         void listen(uint16_t port, int queue_size = 50) const;
 
+        bool set_non_blocking() const;
+
         Connection accept() const;
 
         Connection connect(const std::string &addr, uint16_t port);
