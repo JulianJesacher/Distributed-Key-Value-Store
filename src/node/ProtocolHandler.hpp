@@ -115,11 +115,20 @@ namespace node {
 
         using CommandFieldsAsk = CommandFieldsMove;
 
-        using command = std::vector<std::string>;
+        using Command = std::vector<std::string>;
+
+        using ResponseData = std::tuple<MetaData, Command, ByteArray>;
+
+        enum class ResponseDataFields {
+            c_METADATA = 0,
+            c_COMMAND = 1,
+            c_PAYLOAD = 2,
+            enum_size = 3
+        };
 
         MetaData get_metadata(net::Connection& connection);
 
-        command get_command(net::Connection& connection, uint16_t argc, uint64_t command_size);
+        Command get_command(net::Connection& connection, uint16_t argc, uint64_t command_size);
 
         ByteArray get_payload(net::Connection& connection, uint64_t payload_size);
 
@@ -127,16 +136,16 @@ namespace node {
 
         void get_payload(net::Connection& connection, char* dest, uint64_t payload_size);
 
-        void send_instruction(net::Connection& connection, const command& command, Instruction i,
+        void send_instruction(net::Connection& connection, const Command& command, Instruction i,
             const char* payload = nullptr, uint64_t payload_size = 0);
 
         void send_instruction(net::Connection& connection, const  Status& state);
 
-        void send_instruction(net::Connection& connection, const command& command, Instruction i, const std::string& payload);
+        void send_instruction(net::Connection& connection, const Command& command, Instruction i, const std::string& payload);
 
-        uint64_t get_command_size(const command& command);
+        uint64_t get_command_size(const Command& command);
 
-        void serialize_command(const command& command, std::span<char> buf);
+        void serialize_command(const Command& command, std::span<char> buf);
 
         void serialize_slots(const std::vector<cluster::Slot>& slots, net::Connection& connection);
     }
