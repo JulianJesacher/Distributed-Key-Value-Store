@@ -7,3 +7,4 @@ make
 ./tests/keyValueStoreTest
 ./tests/networkingTest
 ./tests/protocolHandlerTest
+./tests/clientTest
