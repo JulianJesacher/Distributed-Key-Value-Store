@@ -63,9 +63,9 @@ namespace node::cluster {
 
     Status add_node(ClusterState& state, const std::string& name, const std::string& ip, uint16_t cluster_port, uint16_t client_port);
 
-    bool check_key_slot_served_and_send_meet(const std::string& key, net::Connection& connection, cluster::ClusterState& state);
+    bool check_key_slot_served_and_send_moved(const std::string& key, net::Connection& connection, cluster::ClusterState& state);
 
-    bool check_slot_served_and_send_meet(uint16_t slot, net::Connection& connection, cluster::ClusterState& state);
+    bool check_slot_served_and_send_moved(uint16_t slot, net::Connection& connection, cluster::ClusterState& state);
 
     uint16_t get_key_hash(const std::string& key);
 

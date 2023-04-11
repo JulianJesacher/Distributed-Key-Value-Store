@@ -187,7 +187,7 @@ TEST_CASE("test sharding") {
         server.handle_connection(connection);
     };
 
-    auto send_instruction = [&](Node& server, const protocol::command command, protocol::Instruction instruction, const std::string& payload) {
+    auto send_instruction = [&](Node& server, const protocol::Command command, protocol::Instruction instruction, const std::string& payload) {
         net::Connection connection = net::Socket{}.connect(port);
         node::protocol::send_instruction(connection, command, instruction, payload);
 
@@ -204,7 +204,7 @@ TEST_CASE("test sharding") {
         auto received = std::async(process_instruction, std::ref(server1));
         std::this_thread::sleep_for(100ms);
 
-        auto sent = std::async(send_instruction, std::ref(server2), protocol::command{ key, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
+        auto sent = std::async(send_instruction, std::ref(server2), protocol::Command{ key, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
 
         auto [actual_metadata, actual_command, actual_payload] = sent.get();
         received.get();
@@ -228,7 +228,7 @@ TEST_CASE("test sharding") {
         auto received = std::async(process_instruction, std::ref(server1));
         std::this_thread::sleep_for(100ms);
 
-        auto sent = std::async(send_instruction, std::ref(server2), protocol::command{ key, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
+        auto sent = std::async(send_instruction, std::ref(server2), protocol::Command{ key, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
         auto [actual_metadata, actual_command, actual_payload] = sent.get();
 
         received.get();
@@ -303,7 +303,7 @@ TEST_CASE("Test migrating slot") {
         server.handle_connection(connection);
     };
 
-    auto send_instruction = [&](uint16_t port, const protocol::command command, protocol::Instruction instruction, const std::string& payload) {
+    auto send_instruction = [&](uint16_t port, const protocol::Command command, protocol::Instruction instruction, const std::string& payload) {
         net::Connection connection = net::Socket{}.connect(port);
         node::protocol::send_instruction(connection, command, instruction, payload);
 
@@ -321,7 +321,7 @@ TEST_CASE("Test migrating slot") {
         // Insert Key to slot 0 in node0
         auto processed = std::async(process_instruction, std::ref(server0), client_port0);
         std::this_thread::sleep_for(100ms);
-        auto sent = std::async(send_instruction, client_port0, protocol::command{ key_slot_0, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
+        auto sent = std::async(send_instruction, client_port0, protocol::Command{ key_slot_0, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
         sent.get();
         processed.get();
 
@@ -337,14 +337,14 @@ TEST_CASE("Test migrating slot") {
         // Set slot0 to migrating in node0
         processed = std::async(process_instruction, std::ref(server0), client_port0);
         std::this_thread::sleep_for(100ms);
-        sent = std::async(send_instruction, client_port0, protocol::command{ "0", "127.0.0.1", std::to_string(client_port1) }, protocol::Instruction::c_MIGRATE_SLOT, "");
+        sent = std::async(send_instruction, client_port0, protocol::Command{ "0", "127.0.0.1", std::to_string(client_port1) }, protocol::Instruction::c_MIGRATE_SLOT, "");
         sent.get();
         processed.get();
 
         // Set slot0 to importing in node1
         processed = std::async(process_instruction, std::ref(server1), client_port1);
         std::this_thread::sleep_for(100ms);
-        sent = std::async(send_instruction, client_port1, protocol::command{ "0", "127.0.0.1", std::to_string(client_port0)}, protocol::Instruction::c_IMPORT_SLOT, "");
+        sent = std::async(send_instruction, client_port1, protocol::Command{ "0", "127.0.0.1", std::to_string(client_port0)}, protocol::Instruction::c_IMPORT_SLOT, "");
         sent.get();
         processed.get();
 
@@ -362,7 +362,7 @@ TEST_CASE("Test migrating slot") {
 
         processed = std::async(process_instruction, std::ref(server0), client_port0);
         std::this_thread::sleep_for(100ms);
-        sent = std::async(send_instruction, client_port0, protocol::command{ other_key_slot_0, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
+        sent = std::async(send_instruction, client_port0, protocol::Command{ other_key_slot_0, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
         auto [actual_metadata, actual_command, actual_payload] = sent.get();
         processed.get();
 
@@ -389,7 +389,7 @@ TEST_CASE("Test migrating slot") {
         // Insert key with slot 0 in node1, expect ok response
         processed = std::async(process_instruction, std::ref(server1), client_port1);
         std::this_thread::sleep_for(100ms);
-        sent = std::async(send_instruction, client_port1, protocol::command{ other_key_slot_0, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
+        sent = std::async(send_instruction, client_port1, protocol::Command{ other_key_slot_0, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
         std::tie(actual_metadata, actual_command, actual_payload) = sent.get();
         processed.get();
 
@@ -417,7 +417,7 @@ TEST_CASE("Test migrating slot") {
         // Get key from node 0, expect ask response
         processed = std::async(process_instruction, std::ref(server0), client_port0);
         std::this_thread::sleep_for(100ms);
-        sent = std::async(send_instruction, client_port0, protocol::command{ other_key_slot_0, "10", "0", "false" }, protocol::Instruction::c_GET, "");
+        sent = std::async(send_instruction, client_port0, protocol::Command{ other_key_slot_0, "10", "0", "false" }, protocol::Instruction::c_GET, "");
         std::tie(actual_metadata, actual_command, actual_payload) = sent.get();
         processed.get();
 
@@ -447,7 +447,7 @@ TEST_CASE("Test migrating slot") {
         //Get key from node1, expect no asking error
         processed = std::async(process_instruction, std::ref(server1), client_port1);
         std::this_thread::sleep_for(100ms);
-        sent = std::async(send_instruction, client_port1, protocol::command{ key_slot_0, "10", "0", "false" }, protocol::Instruction::c_GET, "");
+        sent = std::async(send_instruction, client_port1, protocol::Command{ key_slot_0, "10", "0", "false" }, protocol::Instruction::c_GET, "");
         std::tie(actual_metadata, actual_command, actual_payload) = sent.get();
         processed.get();
 
@@ -477,7 +477,7 @@ TEST_CASE("Test migrating slot") {
         // Erase key from node 0, expect ask response
         processed = std::async(process_instruction, std::ref(server0), client_port0);
         std::this_thread::sleep_for(100ms);
-        sent = std::async(send_instruction, client_port0, protocol::command{ other_key_slot_0 }, protocol::Instruction::c_ERASE, "");
+        sent = std::async(send_instruction, client_port0, protocol::Command{ other_key_slot_0 }, protocol::Instruction::c_ERASE, "");
         std::tie(actual_metadata, actual_command, actual_payload) = sent.get();
         processed.get();
 
@@ -507,7 +507,7 @@ TEST_CASE("Test migrating slot") {
         // Erase only key from node0, expect ok and slot state change to normal and not served by node0
         processed = std::async(process_instruction, std::ref(server0), client_port0);
         std::this_thread::sleep_for(100ms);
-        sent = std::async(send_instruction, client_port0, protocol::command{ key_slot_0 }, protocol::Instruction::c_ERASE, "");
+        sent = std::async(send_instruction, client_port0, protocol::Command{ key_slot_0 }, protocol::Instruction::c_ERASE, "");
         std::tie(actual_metadata, actual_command, actual_payload) = sent.get();
         processed.get();
 
@@ -556,7 +556,7 @@ TEST_CASE("Test get slots") {
 
     auto send_instruction = [&server_port]() {
         auto connection = net::Socket{}.connect(server_port);
-        protocol::send_instruction(connection, protocol::command{}, protocol::Instruction::c_GET_SLOTS, "");
+        protocol::send_instruction(connection, protocol::Command{}, protocol::Instruction::c_GET_SLOTS, "");
 
         auto received_metadata = protocol::get_metadata(connection);
         auto received_command = protocol::get_command(connection, received_metadata.argc, received_metadata.command_size);

@@ -6,7 +6,7 @@
 #include "../net/Socket.hpp"
 
 using MetaData = node::protocol::MetaData;
-using command = node::protocol::command;
+using command = node::protocol::Command;
 using Instruction = node::protocol::Instruction;
 
 namespace node {
@@ -16,6 +16,7 @@ namespace node {
         cluster_state_ = state;
         client_port_ = client_port;
         cluster_port_ = cluster_port;
+        cluster_state_.slots.resize(cluster::CLUSTER_AMOUNT_OF_SLOTS);
     }
 
     void Node::main_loop() {

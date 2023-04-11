@@ -15,7 +15,7 @@ using Instruction = node::protocol::Instruction;
 
 namespace node::instruction_handler {
 
-    Status check_argc(const protocol::command& command, protocol::Instruction instruction) {
+    Status check_argc(const protocol::Command& command, protocol::Instruction instruction) {
         switch (instruction) {
         case Instruction::c_PUT:
             if (command.size() != to_integral(PutFields::enum_size)) {
@@ -65,25 +65,25 @@ namespace node::instruction_handler {
 
     void send_ask_response(net::Connection& connection, uint16_t slot, cluster::ClusterState& cluster_state) {
         cluster::ClusterNode& migration_partner = *cluster_state.slots[slot].migration_partner;
-        protocol::command ask_command{std::string(migration_partner.ip.data()), std::to_string(migration_partner.client_port)};
+        protocol::Command ask_command{std::string(migration_partner.ip.data()), std::to_string(migration_partner.client_port)};
         protocol::send_instruction(connection, ask_command, Instruction::c_ASK);
     }
 
     void handle_put(net::Connection& connection, const protocol::MetaData& meta_data,
-        const protocol::command& command, key_value_store::IKeyValueStore& kvs, cluster::ClusterState& cluster_state) {
+        const protocol::Command& command, key_value_store::IKeyValueStore& kvs, cluster::ClusterState& cluster_state) {
         Status argc_state = check_argc(command, Instruction::c_PUT);
         if (!argc_state.is_ok()) {
             protocol::send_instruction(connection, {}, Instruction::c_ERROR_RESPONSE, argc_state.get_msg());
             return;
         }
 
-        uint64_t total_payload_size = meta_data.payload_size;
         uint64_t cur_payload_size = std::stoull(command[to_integral(PutFields::c_CUR_PAYLOAD_SIZE)]);
         uint64_t offset = std::stoull(command[to_integral(PutFields::c_OFFSET)]);
+        uint64_t total_payload_size = std::max(meta_data.payload_size, offset + cur_payload_size);
         const std::string& key = command[to_integral(PutFields::c_KEY)];
         uint16_t slot = cluster::get_key_hash(key) % cluster::CLUSTER_AMOUNT_OF_SLOTS;
 
-        if (!cluster::check_key_slot_served_and_send_meet(key, connection, cluster_state)) {
+        if (!cluster::check_key_slot_served_and_send_moved(key, connection, cluster_state)) {
             return;
         }
 
@@ -113,7 +113,7 @@ namespace node::instruction_handler {
         protocol::send_instruction(connection, state);
     }
 
-    void handle_get(net::Connection& connection, const protocol::command& command,
+    void handle_get(net::Connection& connection, const protocol::Command& command,
         key_value_store::IKeyValueStore& kvs, cluster::ClusterState& cluster_state) {
         Status argc_state = check_argc(command, Instruction::c_GET);
         if (!argc_state.is_ok()) {
@@ -127,7 +127,7 @@ namespace node::instruction_handler {
         bool asking = command[to_integral(GetFields::c_ASKING)] == "true";
         uint16_t slot = cluster::get_key_hash(key) % cluster::CLUSTER_AMOUNT_OF_SLOTS;
 
-        if (!cluster::check_slot_served_and_send_meet(slot, connection, cluster_state)) {
+        if (!cluster::check_slot_served_and_send_moved(slot, connection, cluster_state)) {
             return;
         }
 
@@ -136,7 +136,7 @@ namespace node::instruction_handler {
             cluster::ClusterNode* migration_partner = cluster_state.slots[slot].migration_partner;
             protocol::send_instruction(
                 connection,
-                protocol::command{ std::string(migration_partner->ip.data()), std::to_string(migration_partner->client_port)},
+                protocol::Command{ std::string(migration_partner->ip.data()), std::to_string(migration_partner->client_port)},
                 Instruction::c_NO_ASKING_ERROR);
             return;
         }
@@ -160,12 +160,12 @@ namespace node::instruction_handler {
             size = value.size();
         }
         //Send retrieved value
-        protocol::command response_command{std::to_string(value.size()), std::to_string(offset)};
+        protocol::Command response_command{std::to_string(value.size()), std::to_string(offset)};
         protocol::send_instruction(connection, response_command,
             Instruction::c_GET_RESPONSE, value.data() + offset, size);
     }
 
-    void handle_erase(net::Connection& connection, const protocol::command& command,
+    void handle_erase(net::Connection& connection, const protocol::Command& command,
         key_value_store::IKeyValueStore& kvs, cluster::ClusterState& cluster_state) {
         Status argc_state = check_argc(command, Instruction::c_ERASE);
         if (!argc_state.is_ok()) {
@@ -175,7 +175,7 @@ namespace node::instruction_handler {
 
         const std::string& key = command[to_integral(EraseFields::c_KEY)];
         uint16_t slot = cluster::get_key_hash(key) % cluster::CLUSTER_AMOUNT_OF_SLOTS;
-        if (!cluster::check_key_slot_served_and_send_meet(key, connection, cluster_state)) {
+        if (!cluster::check_key_slot_served_and_send_moved(key, connection, cluster_state)) {
             return;
         }
 
@@ -199,14 +199,14 @@ namespace node::instruction_handler {
                 cluster_state.myself.served_slots[slot] = false;
                 cluster_state.myself.num_slots_served = cluster_state.myself.served_slots.count();
 
-                protocol::send_instruction(migration_partner.outgoing_link, protocol::command{std::to_string(slot)}, Instruction::c_CLUSTER_MIGRATION_FINISHED);
+                protocol::send_instruction(migration_partner.outgoing_link, protocol::Command{std::to_string(slot)}, Instruction::c_CLUSTER_MIGRATION_FINISHED);
             }
         }
 
         protocol::send_instruction(connection, state);
     }
 
-    void handle_meet(net::Connection& connection, const protocol::command& command, cluster::ClusterState& cluster_state) {
+    void handle_meet(net::Connection& connection, const protocol::Command& command, cluster::ClusterState& cluster_state) {
         Status argc_state = check_argc(command, Instruction::c_MEET);
         if (!argc_state.is_ok()) {
             protocol::send_instruction(connection, argc_state);
@@ -245,7 +245,7 @@ namespace node::instruction_handler {
         return &(partner->second);
     }
 
-    void handle_migrate_slot(net::Connection& connection, const protocol::command& command, cluster::ClusterState& cluster_state) {
+    void handle_migrate_slot(net::Connection& connection, const protocol::Command& command, cluster::ClusterState& cluster_state) {
         Status argc_state = check_argc(command, Instruction::c_MIGRATE_SLOT);
         if (!argc_state.is_ok()) {
             protocol::send_instruction(connection, argc_state);
@@ -257,7 +257,7 @@ namespace node::instruction_handler {
         uint16_t port = std::stoul(command[to_integral(MigrateFields::c_OTHER_CLIENT_PORT)]);
 
         //Not handled by this node
-        if (!cluster::check_slot_served_and_send_meet(slot, connection, cluster_state)) {
+        if (!cluster::check_slot_served_and_send_moved(slot, connection, cluster_state)) {
             protocol::send_instruction(connection, Status::new_error("The slot is not handled by this node"));
             return;
         }
@@ -276,7 +276,7 @@ namespace node::instruction_handler {
         protocol::send_instruction(connection, Status::new_ok());
     }
 
-    void handle_import_slot(net::Connection& connection, const protocol::command& command, cluster::ClusterState& cluster_state) {
+    void handle_import_slot(net::Connection& connection, const protocol::Command& command, cluster::ClusterState& cluster_state) {
         Status argc_state = check_argc(command, Instruction::c_IMPORT_SLOT);
         if (!argc_state.is_ok()) {
             protocol::send_instruction(connection, argc_state);
@@ -300,7 +300,7 @@ namespace node::instruction_handler {
         protocol::send_instruction(connection, Status::new_ok());
     }
 
-    void handle_migration_finished(const protocol::command& command, cluster::ClusterState& cluster_state) {
+    void handle_migration_finished(const protocol::Command& command, cluster::ClusterState& cluster_state) {
         Status argc_state = check_argc(command, Instruction::c_CLUSTER_MIGRATION_FINISHED);
         if (!argc_state.is_ok()) {
             return;
@@ -311,7 +311,7 @@ namespace node::instruction_handler {
         cluster_state.slots[slot].migration_partner = nullptr;
     }
 
-    void handle_get_slots(net::Connection& connection, const protocol::command& command, cluster::ClusterState& cluster_state) {
+    void handle_get_slots(net::Connection& connection, const protocol::Command& command, cluster::ClusterState& cluster_state) {
         Status argc_state = check_argc(command, Instruction::c_GET_SLOTS);
         if (!argc_state.is_ok()) {
             protocol::send_instruction(connection, argc_state);

@@ -38,7 +38,7 @@ namespace node {
             return cluster_state_;
         }
 
-        void execute_instruction(net::Connection& connection, const protocol::MetaData& meta_data, const protocol::command& command);
+        void execute_instruction(net::Connection& connection, const protocol::MetaData& meta_data, const protocol::Command& command);
 
         void handle_connection(net::Connection& connection);
 

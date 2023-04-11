@@ -62,7 +62,7 @@ TEST_CASE("Test put") {
         return std::make_tuple(metadata, command, payload);
     };
 
-    auto process_command = [&](const protocol::command& command, protocol::MetaData meta_data) {
+    auto process_command = [&](const protocol::Command& command, protocol::MetaData meta_data) {
         net::Socket server{};
         if (!net::is_listening(server.fd())) {
             server.listen(port);
@@ -78,7 +78,7 @@ TEST_CASE("Test put") {
 
         std::string key{ "key" };
         std::string value{ "value" };
-        protocol::command command{"key", "5", "0"};
+        protocol::Command command{"key", "5", "0"};
         auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_PUT, command, value);
         auto processed = std::async(process_command, command, meta_data);
         std::this_thread::sleep_for(100ms);
@@ -118,7 +118,7 @@ TEST_CASE("Test put") {
         kvs.put(key, ba);
 
         //Increase size of underlying buffer array test, with offset
-        protocol::command command{ "key", "15", "5" };
+        protocol::Command command{ "key", "15", "5" };
         auto [_, meta_data] = get_command_and_metadata(protocol::Instruction::c_PUT, command, value);
         meta_data.payload_size = 20;
         auto processed = std::async(process_command, command, meta_data);
@@ -160,7 +160,7 @@ TEST_CASE("Test get") {
 
     int port{ 3000 };
     std::string key{ "key" };
-    protocol::command sent_command{"key", "0", "0", "0"}; //Size 0 means whole value sent
+    protocol::Command sent_command{"key", "0", "0", "0"}; //Size 0 means whole value sent
 
     auto send_command = [&]() {
         net::Socket client{};
@@ -173,7 +173,7 @@ TEST_CASE("Test get") {
         return std::make_tuple(metadata, command, payload);
     };
 
-    auto process_command = [&](protocol::command command) {
+    auto process_command = [&](protocol::Command command) {
         net::Socket server{};
         if (!net::is_listening(server.fd())) {
             server.listen(port);
@@ -252,7 +252,7 @@ TEST_CASE("Test erase") {
 
     int port{ 3000 };
     std::string key{ "key" };
-    protocol::command sent_command{"key"};
+    protocol::Command sent_command{"key"};
 
     auto send_command = [&]() {
         net::Socket client{};
@@ -265,7 +265,7 @@ TEST_CASE("Test erase") {
         return std::make_tuple(metadata, command, payload);
     };
 
-    auto process_command = [&](protocol::command command) {
+    auto process_command = [&](protocol::Command command) {
         net::Socket server{};
         if (!net::is_listening(server.fd())) {
             server.listen(port);
@@ -349,7 +349,7 @@ TEST_CASE("Test meet") {
         return std::make_tuple(metadata, command, payload);
     };
 
-    auto process_meet = [&](protocol::command command) {
+    auto process_meet = [&](protocol::Command command) {
         net::Socket server{};
         if (!net::is_listening(server.fd())) {
             server.listen(receiver_cluster_port);
@@ -368,7 +368,7 @@ TEST_CASE("Test meet") {
         return true;
     };
 
-    protocol::command sent_command{
+    protocol::Command sent_command{
         new_node_ip,
             std::to_string(new_node_client_port),
             std::to_string(new_node_cluster_port),
@@ -426,7 +426,7 @@ TEST_CASE("check migrate / import slot") {
     };
     ClusterState cluster_state1{ nodes, 2, std::vector<Slot>(3), node1 };
 
-    auto handle_request = [&](auto handler, protocol::command& command, ClusterState& cluster_state) {
+    auto handle_request = [&](auto handler, protocol::Command& command, ClusterState& cluster_state) {
         net::Socket server{};
         if (!net::is_listening(server.fd())) {
             server.listen(client_port);
@@ -448,7 +448,7 @@ TEST_CASE("check migrate / import slot") {
     };
 
     SUBCASE("Test failure already migrating") {
-        protocol::command command{ "0", "127.0.0.1", "5000" };
+        protocol::Command command{ "0", "127.0.0.1", "5000" };
         cluster_state1.slots[0].state = SlotState::c_MIGRATING;
 
         //Check migrate slot
@@ -474,7 +474,7 @@ TEST_CASE("check migrate / import slot") {
     }
 
     SUBCASE("Test failure other node not in cluster") {
-        protocol::command command{ "0", "127.0.0.1", "5000" };
+        protocol::Command command{ "0", "127.0.0.1", "5000" };
 
         //Check migrate slot
         auto processed = std::async(handle_request, instruction_handler::handle_migrate_slot, std::ref(command), std::ref(cluster_state1));
@@ -502,7 +502,7 @@ TEST_CASE("check migrate / import slot") {
         ClusterNode other_node{ "node2", "127.0.0.1", cluster_port, 5000 };
         cluster_state1.nodes["node2"] = other_node;
         cluster_state1.slots[0].amount_of_keys = 1;
-        protocol::command command{ "0", "127.0.0.1", "5000" };
+        protocol::Command command{ "0", "127.0.0.1", "5000" };
 
 
         //Check migrate slot
@@ -531,7 +531,7 @@ TEST_CASE("check migrate / import slot") {
     SUBCASE("Test correct importing") {
         ClusterNode other_node{ "node2", "127.0.0.1", cluster_port, 5000 };
         cluster_state1.nodes["node2"] = other_node;
-        protocol::command command{ "0", "127.0.0.1", "5000" };
+        protocol::Command command{ "0", "127.0.0.1", "5000" };
 
 
         //Check migrate slot

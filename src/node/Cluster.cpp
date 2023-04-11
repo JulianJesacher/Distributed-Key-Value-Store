@@ -43,7 +43,7 @@ namespace node::cluster {
         }
 
         protocol::send_instruction(link,
-            protocol::command{},
+            protocol::Command{},
             protocol::Instruction::c_CLUSTER_PING,
             reinterpret_cast<char*>(msg.data.data()),
             (required_nodes + 1) * sizeof(ClusterNodeGossipData));
@@ -128,25 +128,24 @@ namespace node::cluster {
         return std::hash<std::string>{}(key);
     }
 
-    bool check_key_slot_served_and_send_meet(const std::string& key, net::Connection& connection, cluster::ClusterState& state) {
+    bool check_key_slot_served_and_send_moved(const std::string& key, net::Connection& connection, cluster::ClusterState& state) {
         uint16_t slot = get_key_hash(key) % CLUSTER_AMOUNT_OF_SLOTS;
-        return check_slot_served_and_send_meet(slot, connection, state);
+        return check_slot_served_and_send_moved(slot, connection, state);
     }
 
-    bool check_slot_served_and_send_meet(uint16_t slot, net::Connection& connection, cluster::ClusterState& state) {
+    bool check_slot_served_and_send_moved(uint16_t slot, net::Connection& connection, cluster::ClusterState& state) {
         if (state.myself.served_slots.test(slot)) {
             return true;
         }
 
-
-        if (state.slots[slot].served_by == nullptr) {
+        if (slot < 0 || slot >= state.slots.size() || state.slots[slot].served_by == nullptr) {
             protocol::send_instruction(connection, Status::new_error("Slot not served by any node"));
         }
         else {
             ClusterNode& serving_node = *state.slots[slot].served_by;
             protocol::send_instruction(
                 connection,
-                protocol::command{std::string(serving_node.ip.data()), std::to_string(serving_node.client_port)},
+                protocol::Command{std::string(serving_node.ip.data()), std::to_string(serving_node.client_port)},
                 protocol::Instruction::c_MOVE
             );
         }

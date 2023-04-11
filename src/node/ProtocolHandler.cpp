@@ -18,7 +18,7 @@ namespace node::protocol {
         return meta_data;
     }
 
-    command get_command(net::Connection& connection, uint16_t argc, uint64_t command_size) {
+    Command get_command(net::Connection& connection, uint16_t argc, uint64_t command_size) {
         if (argc == 0 || command_size == 0) {
             return {};
         }
@@ -28,7 +28,7 @@ namespace node::protocol {
         connection.receive(received_data);
         auto it = received_data.begin();
 
-        command command(argc);
+        Command command(argc);
         for (int i = 0; i < argc; ++i) {
             uint64_t size;
             std::memcpy(&size, &(*it), sizeof(uint64_t));
@@ -51,7 +51,7 @@ namespace node::protocol {
         connection.receive(dest, payload_size);
     }
 
-    void send_instruction(net::Connection& connection, const command& command, Instruction i, const char* payload, uint64_t payload_size) {
+    void send_instruction(net::Connection& connection, const Command& command, Instruction i, const char* payload, uint64_t payload_size) {
         uint64_t command_size = get_command_size(command);
         MetaData meta_data{};
         meta_data.instruction = i;
@@ -84,11 +84,11 @@ namespace node::protocol {
         send_instruction(connection, { }, Instruction::c_ERROR_RESPONSE, error_msg);
     }
 
-    void send_instruction(net::Connection& connection, const command& command, Instruction i, const std::string& payload) {
+    void send_instruction(net::Connection& connection, const Command& command, Instruction i, const std::string& payload) {
         send_instruction(connection, command, i, payload.data(), payload.size());
     }
 
-    uint64_t get_command_size(const command& command) {
+    uint64_t get_command_size(const Command& command) {
         uint64_t size = 0;
         for (const auto& c : command) {
             size += sizeof(uint64_t) + c.size();
@@ -96,7 +96,7 @@ namespace node::protocol {
         return size;
     }
 
-    void serialize_command(const command& command, std::span<char> buf) {
+    void serialize_command(const Command& command, std::span<char> buf) {
         uint64_t offset = 0;
         for (const auto& c : command) {
             uint64_t size = c.size();
