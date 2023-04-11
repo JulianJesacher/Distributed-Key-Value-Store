@@ -11,7 +11,8 @@ enum class StatusCode
     s_NOT_SUPPORTED = 2,
     s_INVALID_ARGUMENT = 3,
     s_NOT_ENOUGH_MEMORY = 4,
-    s_ERROR = 5
+    s_ERROR = 5,
+    s_UNKNOWN_RESPONSE = 6
 };
 
 class Status
@@ -41,6 +42,10 @@ public:
         return Status(StatusCode::s_ERROR, msg);
     }
 
+    static Status new_unknown_response(const std::string& msg) {
+        return Status(StatusCode::s_UNKNOWN_RESPONSE, msg);
+    }
+
     bool is_ok() const {
         return errorCode_ == StatusCode::s_OK;
     }
@@ -58,6 +63,9 @@ public:
     }
     bool is_error() const {
         return errorCode_ == StatusCode::s_ERROR;
+    }
+    bool is_unknown_response() const {
+        return errorCode_ == StatusCode::s_UNKNOWN_RESPONSE;
     }
     std::string get_msg() const {
         return errorMsg_;
