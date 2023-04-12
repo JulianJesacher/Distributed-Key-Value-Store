@@ -35,6 +35,7 @@ namespace node {
             int num_ready = connections_epoll_.wait(NODE_WAIT_TIMEOUT);
             for (int i = 0; i < num_ready; i++) {
                 int fd = connections_epoll_.get_event_fd(i);
+                connections_epoll_.reset_occurred_events();
 
                 //New connection
                 if (fd == client_socket.fd() || fd == cluster_socket.fd()) {
@@ -44,7 +45,7 @@ namespace node {
                 }
 
                 //Existing connection
-                else {
+                else if (connections_epoll_.get_events()[i].events & EPOLLIN) {
                     net::Connection& connection = fd_to_connection_[fd];
                     handle_connection(connection);
                 }
