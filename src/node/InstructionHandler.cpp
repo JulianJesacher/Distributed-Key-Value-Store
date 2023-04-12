@@ -122,8 +122,8 @@ namespace node::instruction_handler {
         }
 
         const std::string& key = command[to_integral(GetFields::c_KEY)];
-        uint64_t size = std::stoull(command[to_integral(GetFields::c_SIZE)]);
-        uint64_t offset = std::stoull(command[to_integral(GetFields::c_OFFSET)]);
+        uint64_t current_size = std::stoull(command[to_integral(GetFields::c_SIZE)]);
+        uint64_t current_offset = std::stoull(command[to_integral(GetFields::c_OFFSET)]);
         bool asking = command[to_integral(GetFields::c_ASKING)] == "true";
         uint16_t slot = cluster::get_key_hash(key) % cluster::CLUSTER_AMOUNT_OF_SLOTS;
 
@@ -156,13 +156,13 @@ namespace node::instruction_handler {
         }
 
         //When size is set to 0, the whole value is sent
-        if (size == 0) {
-            size = value.size();
+        if (current_size == 0) {
+            current_size = value.size();
         }
         //Send retrieved value
-        protocol::Command response_command{std::to_string(value.size()), std::to_string(offset)};
+        protocol::Command response_command{std::to_string(current_size), std::to_string(current_offset)};
         protocol::send_instruction(connection, response_command,
-            Instruction::c_GET_RESPONSE, value.data() + offset, size);
+            Instruction::c_GET_RESPONSE, value.data() + current_offset, value.size());
     }
 
     void handle_erase(net::Connection& connection, const protocol::Command& command,
