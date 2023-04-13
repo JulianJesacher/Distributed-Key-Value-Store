@@ -258,7 +258,6 @@ namespace node::instruction_handler {
 
         //Not handled by this node
         if (!cluster::check_slot_served_and_send_moved(slot, connection, cluster_state)) {
-            protocol::send_instruction(connection, Status::new_error("The slot is not handled by this node"));
             return;
         }
 
