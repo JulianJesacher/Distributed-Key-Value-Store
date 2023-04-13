@@ -586,7 +586,7 @@ TEST_CASE("Test get slots") {
     CHECK_EQ(actual_metadata.argc, 0);
     CHECK_EQ(actual_metadata.command_size, 0);
     CHECK_EQ(actual_metadata.payload_size, 76);
-    CHECK_EQ(actual_metadata.instruction, protocol::Instruction::c_GET_SLOTS_RESPONSE);
+    CHECK_EQ(actual_metadata.instruction, protocol::Instruction::c_OK_RESPONSE);
 
     //Check command
     CHECK_EQ(actual_command.size(), 0);

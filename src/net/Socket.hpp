@@ -21,6 +21,8 @@ namespace net {
 
         bool set_non_blocking() const;
 
+        bool set_keep_alive() const;
+
         Connection accept() const;
 
         Connection connect(const std::string &addr, uint16_t port);

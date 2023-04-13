@@ -8,7 +8,10 @@ namespace node::protocol {
 
     MetaData get_metadata(net::Connection& connection) {
         MetaData meta_data;
-        connection.receive(reinterpret_cast<char*>(&meta_data), sizeof(MetaData));
+        ssize_t received = connection.receive(reinterpret_cast<char*>(&meta_data), sizeof(MetaData));
+        if (received != sizeof(MetaData)) {
+            throw std::runtime_error("Failed to receive metadata");
+        }
 
         //Convert to host byte order
         meta_data.argc = ntohs(meta_data.argc);
@@ -25,7 +28,10 @@ namespace node::protocol {
 
         char buf[command_size];
         std::span<char> received_data(buf, command_size);
-        connection.receive(received_data);
+        ssize_t received = connection.receive(received_data);
+        if (received != command_size) {
+            throw std::runtime_error("Failed to receive command");
+        }
         auto it = received_data.begin();
 
         Command command(argc);
@@ -141,7 +147,7 @@ namespace node::protocol {
         std::span<char> data(buf, sizeof(buf));
         observer_ptr<cluster::ClusterNode> prev_node = nullptr;
 
-        for (int slot_number = 0; slot_number < slots.size(); ++slot_number) {
+        for (uint16_t slot_number = 0; slot_number < slots.size(); ++slot_number) {
             const auto& slot = slots[slot_number];
             if (slot_number == 0) {
                 data.data()[offset++] = '0';
@@ -166,6 +172,6 @@ namespace node::protocol {
         //Write last slot range
         write_slot_to_buffer(prev_node, data, offset, slots.size());
 
-        protocol::send_instruction(connection, {}, protocol::Instruction::c_GET_SLOTS_RESPONSE, data.data(), offset);
+        protocol::send_instruction(connection, {}, protocol::Instruction::c_OK_RESPONSE, data.data(), offset);
     }
 }

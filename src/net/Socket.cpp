@@ -57,6 +57,11 @@ namespace net {
         return fcntl(fd_.unwrap(), F_SETFL, flags) == 0;
     }
 
+    bool Socket::set_keep_alive() const {
+        int true_flag = 1;
+        return setsockopt(fd_.unwrap(), SOL_SOCKET, SO_KEEPALIVE, &true_flag, sizeof(true_flag)) == 0;
+    }
+
     Connection Socket::accept() const {
         if (!is_listening(fd_.unwrap())) {
             throw std::runtime_error("socket needs to listen before accepting connections");

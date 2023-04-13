@@ -25,6 +25,9 @@ namespace node {
         client_socket.set_non_blocking();
         cluster_socket.set_non_blocking();
 
+        client_socket.set_keep_alive();
+        cluster_socket.set_keep_alive();
+
         client_socket.listen(client_port_);
         cluster_socket.listen(cluster_port_);
 
@@ -33,6 +36,10 @@ namespace node {
 
         while (running_) {
             int num_ready = connections_epoll_.wait(NODE_WAIT_TIMEOUT);
+            if (!running_) {
+                break;
+            }
+
             for (int i = 0; i < num_ready; i++) {
                 int fd = connections_epoll_.get_event_fd(i);
                 connections_epoll_.reset_occurred_events();
@@ -86,9 +93,13 @@ namespace node {
     }
 
     void Node::handle_connection(net::Connection& connection) {
-        MetaData meta_data = node::protocol::get_metadata(connection);
-        command command = node::protocol::get_command(connection, meta_data.argc, meta_data.command_size);
-
-        execute_instruction(connection, meta_data, command);
+        try {
+            MetaData meta_data = node::protocol::get_metadata(connection);
+            command command = node::protocol::get_command(connection, meta_data.argc, meta_data.command_size);
+            execute_instruction(connection, meta_data, command);
+        }
+        catch (const std::exception& e) {
+            return;
+        }
     }
 }

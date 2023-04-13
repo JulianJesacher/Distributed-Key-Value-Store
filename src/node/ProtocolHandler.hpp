@@ -36,8 +36,7 @@ namespace node {
             c_NO_ASKING_ERROR = 12,
             c_CLUSTER_MIGRATION_FINISHED = 13,
             c_GET_SLOTS = 14,
-            c_GET_SLOTS_RESPONSE = 15,
-            enum_size = 16
+            enum_size = 15
         };
 
         struct MetaData {
