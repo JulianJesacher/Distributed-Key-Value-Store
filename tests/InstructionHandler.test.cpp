@@ -407,8 +407,6 @@ TEST_CASE("Test meet") {
 
     //Check payload
     CHECK_EQ(0, actual_payload.size());
-
-    std::cout << actual_payload.to_string() << std::endl;
 }
 
 TEST_CASE("check migrate / import slot") {

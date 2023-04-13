@@ -31,7 +31,7 @@ namespace net {
         return fd_->unwrap();
     }
 
-    bool Connection::is_connected() const{
+    bool Connection::is_connected() const {
         return fd_.get() != nullptr && fd_->unwrap() != -1;
     }
 
