@@ -518,3 +518,68 @@ TEST_CASE("Test erase value") {
         thread1.join();
     }
 }
+
+TEST_CASE("Test update slot info") {
+    uint16_t client_port0 = 8080, cluster_port0 = 8081;
+    uint16_t client_port1 = 8082, cluster_port1 = 8083;
+    uint16_t client_port2 = 8084, cluster_port2 = 8085;
+    Node node0{ client_port0, cluster_port0 };
+    Node node1{ client_port1, cluster_port1 };
+    Node node2{ client_port2, cluster_port2 };
+    ClusterNode cluster_node0{ "node0", "127.0.0.1", cluster_port0, client_port0 };
+    ClusterNode cluster_node1{ "node1", "127.0.0.1", cluster_port1, client_port1 };
+    ClusterNode cluster_node2{ "node2", "127.0.0.1", cluster_port2, client_port2 };
+    Client client0{}, client1{}, client2{};
+
+    //Start nodes
+    std::thread thread0{&Node::start, & node0};
+    std::thread thread1{&Node::start, & node1};
+    std::thread thread2{&Node::start, & node2};
+    std::this_thread::sleep_for(100ms);
+
+    CHECK(client0.connect_to_node("127.0.0.1", client_port0));
+    CHECK(client1.connect_to_node("127.0.0.1", client_port1));
+    CHECK(client2.connect_to_node("127.0.0.1", client_port2));
+
+    SUBCASE("Test no connection") {
+        client0.disconnect_all();
+        client1.disconnect_all();
+        client2.disconnect_all();
+
+        auto status = client0.get_update_slot_info();
+        CHECK(status.is_error());
+        CHECK_EQ("Not connected to any node", status.get_msg());
+        for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; i++) {
+            CHECK_EQ("", client0.get_slot_nodes()[i]);
+        }
+    }
+
+    SUBCASE("Test interval") {
+        node0.get_cluster_state().slots[0].served_by = &cluster_node0;
+        node0.get_cluster_state().slots[1].served_by = &cluster_node0;
+
+        auto status = client0.get_update_slot_info();
+        CHECK(status.is_ok());
+        CHECK_EQ(0, status.get_msg().size());
+
+        CHECK_EQ("127.0.0.1:" + std::to_string(client_port0), client0.get_slot_nodes()[0]);
+        CHECK_EQ("127.0.0.1:" + std::to_string(client_port0), client0.get_slot_nodes()[1]);
+        for (int i = 2; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; i++) {
+            CHECK_EQ("", client0.get_slot_nodes()[i]);
+        }
+    }
+
+    //Stop nodes
+    node0.stop();
+    node1.stop();
+    node2.stop();
+    if (thread0.joinable()) {
+        thread0.join();
+    }
+    if (thread1.joinable()) {
+        thread1.join();
+    }
+    if (thread2.joinable()) {
+        thread2.join();
+    }
+}
