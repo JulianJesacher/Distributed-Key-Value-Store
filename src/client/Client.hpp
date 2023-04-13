@@ -29,6 +29,12 @@ namespace client {
 
         Status get_value(const std::string& key, ByteArray& value, int offset = 0, int size = 0);
 
+        Status erase_value(const std::string& key);
+
+        std::array<std::string, node::cluster::CLUSTER_AMOUNT_OF_SLOTS>& get_slot_nodes() {
+            return slots_nodes_;
+        }
+
     private:
 
         bool handle_move(node::protocol::Command& received_cmd, uint16_t slot);
@@ -44,6 +50,8 @@ namespace client {
 
         Status put_value(observer_ptr<net::Connection> link, const std::string& key,
             const char* value, uint64_t size, int offset);
+
+        Status erase_value(observer_ptr<net::Connection> link, const std::string& key);
 
         std::array<std::string, node::cluster::CLUSTER_AMOUNT_OF_SLOTS> slots_nodes_;
         std::unordered_map<std::string, net::Connection> nodes_connections_;

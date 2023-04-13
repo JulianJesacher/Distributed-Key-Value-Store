@@ -255,4 +255,65 @@ namespace client {
         return get_value(link, key, value, offset, size, false);
     }
 
+    Status Client::erase_value(observer_ptr<net::Connection> link, const std::string& key) {
+        uint16_t slot_number = node::cluster::get_key_hash(key) % node::cluster::CLUSTER_AMOUNT_OF_SLOTS;
+
+        //No node available
+        if (link == nullptr) {
+            return Status::new_error("Not connected to any node");
+        }
+
+        Command cmd{ key };
+        send_instruction(*link, cmd, Instruction::c_ERASE);
+
+        //handle response
+        ResponseData response = get_response(*link);
+        MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
+        Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
+        ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
+
+        switch (received_meta_data.instruction) {
+        case Instruction::c_OK_RESPONSE:
+        {
+            return Status::new_ok();
+        }
+
+        case Instruction::c_ERROR_RESPONSE:
+        {
+            return Status::new_error(received_payload.to_string());
+        }
+
+        case Instruction::c_MOVE:
+        {
+            if (!handle_move(received_cmd, slot_number)) {
+                return Status::new_error("Could not connect to new node");
+            }
+            return erase_value(key);
+        }
+
+        case Instruction::c_ASK:
+        {
+            if (!handle_ask(received_cmd)) {
+                return Status::new_error("Could not connect to new node");
+            }
+            std::string other_ip = received_cmd[to_integral(CommandFieldsAsk::c_OTHER_IP)];
+            std::string other_port = received_cmd[to_integral(CommandFieldsAsk::c_OTHER_CLIENT_PORT)];
+            std::string ip_port = get_ip_port(other_ip, std::stoi(other_port));
+            observer_ptr<net::Connection> new_link = &nodes_connections_[ip_port];
+            return erase_value(new_link, key);
+        }
+
+        default: {
+            return Status::new_unknown_response("Unknown response");
+        }
+        }
+    }
+
+    Status Client::erase_value(const std::string& key) {
+        uint16_t slot_number = node::cluster::get_key_hash(key) % node::cluster::CLUSTER_AMOUNT_OF_SLOTS;
+        observer_ptr<net::Connection> link = get_node_connection_by_slot(slot_number);
+
+        return erase_value(link, key);
+    }
+
 }  // namespace client
