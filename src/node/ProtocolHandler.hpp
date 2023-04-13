@@ -94,12 +94,7 @@ namespace node {
             enum_size = 3
         };
 
-        enum class CommandFieldsImport {
-            c_SLOT = 0,
-            c_OTHER_IP = 1,
-            c_OTHER_CLIENT_PORT = 2,
-            enum_size = 3
-        };
+        using CommandFieldsImport = CommandFieldsMigrate;
 
         enum class CommandFieldsNoAskingError {
             c_OTHER_IP = 0,
