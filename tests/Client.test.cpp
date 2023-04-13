@@ -132,6 +132,8 @@ TEST_CASE("Test put") {
         for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; i++) {
             node0.get_cluster_state().myself.served_slots[i] = false;
             node1.get_cluster_state().myself.served_slots[i] = true;
+
+            client0.get_slot_nodes()[i] = "127.0.0.1:" + std::to_string(client_port0);
         }
 
         auto status = client0.put_value("key", "value");
@@ -144,6 +146,11 @@ TEST_CASE("Test put") {
         ByteArray actual_value = ByteArray::new_allocated_byte_array(5);
         node1.get_kvs().get("key", actual_value);
         CHECK_EQ("value", actual_value.to_string());
+
+        //Check if moved was successful
+        uint16_t slot = cluster::get_key_hash("key") % cluster::CLUSTER_AMOUNT_OF_SLOTS;
+        std::string expected_node = "127.0.0.1:" + std::to_string(client_port1);
+        CHECK_EQ(expected_node, client0.get_slot_nodes()[slot]);
     }
 
     SUBCASE("Slot migrating, ask returned") {
@@ -269,6 +276,8 @@ TEST_CASE("Get value") {
         for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; i++) {
             node0.get_cluster_state().myself.served_slots[i] = false;
             node1.get_cluster_state().myself.served_slots[i] = true;
+
+            client0.get_slot_nodes()[i] = "127.0.0.1:" + std::to_string(client_port0);
         }
 
         //Put a value
@@ -279,6 +288,11 @@ TEST_CASE("Get value") {
         auto status = client0.get_value("key", actual_value);
         CHECK(status.is_ok());
         CHECK_EQ("value", actual_value.to_string());
+
+        //Check if moved was successful
+        uint16_t slot = cluster::get_key_hash("key") % cluster::CLUSTER_AMOUNT_OF_SLOTS;
+        std::string expected_node = "127.0.0.1:" + std::to_string(client_port1);
+        CHECK_EQ(expected_node, client0.get_slot_nodes()[slot]);
     }
 
     SUBCASE("Get from migrating slot, connect to migrating node") {
@@ -410,8 +424,7 @@ TEST_CASE("Test erase value") {
         CHECK_EQ(0, status.get_msg().size());
     }
 
-    //TODO: Moved for get and put
-    SUBCASE("Moved") {
+    SUBCASE("Connect to wrong node, successful") {
         for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; i++) {
             node0.get_cluster_state().myself.served_slots[i] = false;
             node0.get_cluster_state().slots[i].state = cluster::SlotState::c_NORMAL;
@@ -432,7 +445,7 @@ TEST_CASE("Test erase value") {
         CHECK_EQ(0, node1.get_kvs().get_size());
         CHECK_EQ(0, status.get_msg().size());
 
-        //Check that moved has been stored
+        //Check if moved was successful
         uint16_t slot = cluster::get_key_hash("key") % cluster::CLUSTER_AMOUNT_OF_SLOTS;
         std::string expected_node = "127.0.0.1:" + std::to_string(client_port1);
         CHECK_EQ(expected_node, client0.get_slot_nodes()[slot]);
@@ -505,4 +518,3 @@ TEST_CASE("Test erase value") {
         thread1.join();
     }
 }
-
