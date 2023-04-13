@@ -2,6 +2,7 @@
 
 #include <random>
 #include <stdexcept>
+#include <sstream>
 
 using namespace node::protocol;
 
@@ -28,6 +29,16 @@ namespace client {
 
     void Client::disconnect_all() {
         nodes_connections_.clear();
+    }
+
+    observer_ptr<net::Connection> Client::get_random_connection() {
+        if (nodes_connections_.size() == 0) {
+            return nullptr;
+        }
+        std::mt19937 random_engine(std::random_device{}());
+        std::uniform_int_distribution<uint16_t> dist(0, nodes_connections_.size() - 1); //Important: [a, b] both borders inclusive
+        uint16_t random_index = dist(random_engine);
+        return &std::next(nodes_connections_.begin(), random_index)->second;
     }
 
     ResponseData get_response(net::Connection& connection) {
@@ -62,10 +73,7 @@ namespace client {
         observer_ptr<net::Connection> link = nullptr;
         //Slot handled by unknown node, but another random node available
         if (slots_nodes_[slot_number].empty() && !nodes_connections_.empty()) {
-            std::mt19937 random_engine(std::random_device{}());
-            std::uniform_int_distribution<uint16_t> dist(0, nodes_connections_.size() - 1); //Important: [a, b] both borders inclusive
-            uint16_t random_index = dist(random_engine);
-            link = &std::next(nodes_connections_.begin(), random_index)->second;
+            link = get_random_connection();
         }
         //No node available
         else if (nodes_connections_.empty()) {
@@ -314,6 +322,63 @@ namespace client {
         observer_ptr<net::Connection> link = get_node_connection_by_slot(slot_number);
 
         return erase_value(link, key);
+    }
+
+    void Client::update_slot_info(ByteArray& data) {
+        std::stringstream ss(data.to_string());
+        std::string current_line;
+        while (std::getline(ss, current_line, '\n')) {
+            std::stringstream current_line_ss(current_line);
+
+            uint16_t slot_number_begin, slot_number_end;
+            current_line_ss >> slot_number_begin;
+            current_line_ss >> slot_number_end;
+            std::string ip_port;
+            current_line_ss >> ip_port;
+
+            for (uint16_t slot_number = slot_number_begin; slot_number <= slot_number_end; ++slot_number) {
+                if (ip_port != "NULL") {
+                    slots_nodes_[slot_number] = ip_port;
+                }
+                else {
+                    slots_nodes_[slot_number] = ""; //TODO: Use optional
+                }
+            }
+        }
+    }
+
+    Status Client::get_update_slot_info() {
+        observer_ptr<net::Connection> link = get_random_connection();
+        if (link == nullptr) {
+            return Status::new_error("Not connected to any node");
+        }
+
+        Command cmd{};
+        send_instruction(*link, cmd, Instruction::c_GET_SLOTS);
+
+        //handle response
+        ResponseData response = get_response(*link);
+        MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
+        Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
+        ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
+
+        switch (received_meta_data.instruction) {
+        case Instruction::c_ERROR_RESPONSE:
+        {
+            return Status::new_error(received_payload.to_string());
+        }
+
+        case Instruction::c_OK_RESPONSE:
+        {
+            update_slot_info(received_payload);
+            return Status::new_ok();
+        }
+
+        default:
+        {
+            return Status::new_unknown_response("Unknown response");
+        }
+        }
     }
 
 }  // namespace client

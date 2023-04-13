@@ -35,6 +35,8 @@ namespace client {
             return slots_nodes_;
         }
 
+        Status get_update_slot_info();
+
     private:
 
         bool handle_move(node::protocol::Command& received_cmd, uint16_t slot);
@@ -52,6 +54,10 @@ namespace client {
             const char* value, uint64_t size, int offset);
 
         Status erase_value(observer_ptr<net::Connection> link, const std::string& key);
+
+        observer_ptr<net::Connection> get_random_connection();
+
+        void update_slot_info(ByteArray& data);
 
         std::array<std::string, node::cluster::CLUSTER_AMOUNT_OF_SLOTS> slots_nodes_;
         std::unordered_map<std::string, net::Connection> nodes_connections_;
