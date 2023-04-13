@@ -194,8 +194,8 @@ namespace client {
         case Instruction::c_GET_RESPONSE:
         {
             uint64_t total_payload_size = received_meta_data.payload_size;
-            uint64_t current_payload_size = stoll(received_cmd[to_integral(CommandFieldsGetResponse::c_SIZE)]); //TODO: FIX
-            uint64_t current_offset = stoll(received_cmd[to_integral(CommandFieldsGetResponse::c_OFFSET)]);
+            uint64_t current_payload_size = std::stoull(received_cmd[to_integral(CommandFieldsGetResponse::c_SIZE)]);
+            uint64_t current_offset = std::stoull(received_cmd[to_integral(CommandFieldsGetResponse::c_OFFSET)]);
 
             value.resize(total_payload_size);
             get_payload(*link, value.data() + current_offset, current_payload_size);
