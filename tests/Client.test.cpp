@@ -20,9 +20,7 @@ TEST_CASE("Test connect") {
     Client client0{};
     Node node0{ client_port0, cluster_port0 };
 
-    auto thread0 = std::thread([&node0]() {
-        node0.start();
-        });
+    auto thread0 = std::thread(&Node::start, &node0);
     std::this_thread::sleep_for(100ms);
 
     SUBCASE("No connections open") {
@@ -63,12 +61,8 @@ TEST_CASE("Test put") {
         node0.get_cluster_state().slots[i].served_by = &cluster_node1;
     }
 
-    auto thread0 = std::thread([&node0]() {
-        node0.start();
-        });
-    auto thread1 = std::thread([&node1]() {
-        node1.start();
-        });
+    auto thread0 = std::thread(&Node::start, &node0);
+    auto thread1 = std::thread(&Node::start, &node1);
     std::this_thread::sleep_for(100ms);
 
     CHECK(client0.connect_to_node("127.0.0.1", client_port0));
@@ -201,12 +195,8 @@ TEST_CASE("Get value") {
         node0.get_cluster_state().slots[i].served_by = &cluster_node1;
     }
 
-    auto thread0 = std::thread([&node0]() {
-        node0.start();
-        });
-    auto thread1 = std::thread([&node1]() {
-        node1.start();
-        });
+    auto thread0 = std::thread(&Node::start, &node0);
+    auto thread1 = std::thread(&Node::start, &node1);
     std::this_thread::sleep_for(100ms);
 
     CHECK(client0.connect_to_node("127.0.0.1", client_port0));
@@ -387,12 +377,8 @@ TEST_CASE("Test erase value") {
         node0.get_cluster_state().slots[i].served_by = &cluster_node1;
     }
 
-    auto thread0 = std::thread([&node0]() {
-        node0.start();
-        });
-    auto thread1 = std::thread([&node1]() {
-        node1.start();
-        });
+    auto thread0 = std::thread(&Node::start, &node0);
+    auto thread1 = std::thread(&Node::start, &node1);
     std::this_thread::sleep_for(100ms);
 
     CHECK(client0.connect_to_node("127.0.0.1", client_port0));
