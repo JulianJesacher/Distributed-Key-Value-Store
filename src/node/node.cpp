@@ -42,13 +42,17 @@ namespace node {
 
             for (int i = 0; i < num_ready; i++) {
                 int fd = connections_epoll_.get_event_fd(i);
-                connections_epoll_.reset_occurred_events();
 
                 //New connection
                 if (fd == client_socket.fd() || fd == cluster_socket.fd()) {
-                    net::Connection connection = client_socket.accept();
-                    connections_epoll_.add_event(connection.fd(), EPOLLIN | EPOLLET);
-                    fd_to_connection_[connection.fd()] = connection;
+                    try {
+                        net::Connection connection = client_socket.accept();
+                        connections_epoll_.add_event(connection.fd(), EPOLLIN | EPOLLET);
+                        fd_to_connection_[connection.fd()] = connection;
+                    }
+                    catch (std::exception& e) {
+                        continue;
+                    }
                 }
 
                 //Existing connection
