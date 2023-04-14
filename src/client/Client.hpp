@@ -63,6 +63,8 @@ namespace client {
 
         void update_slot_info(ByteArray& data);
 
+        Status handle_slot_migration(uint16_t slot, const std::string& partner_ip, int partner_port, node::protocol::Instruction instruction);
+
         std::array<std::string, node::cluster::CLUSTER_AMOUNT_OF_SLOTS> slots_nodes_;
         std::unordered_map<std::string, net::Connection> nodes_connections_;
     };

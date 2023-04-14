@@ -381,31 +381,31 @@ namespace client {
         }
     }
 
-    Status Client::migrate_slot(uint16_t slot, const std::string& importing_ip, int importing_port) {
-        std::string& migrating_ip_port = slots_nodes_[slot];
-        if (migrating_ip_port == "") {
+    Status Client::handle_slot_migration(uint16_t slot, const std::string& partner_ip, int partner_port, Instruction instruction) {
+        std::string& partner_ip_port = slots_nodes_[slot];
+        if (partner_ip_port == "") {
             return Status::new_error("Slot is not handled by a known node");
         }
 
-        observer_ptr<net::Connection> migrating_link = nullptr;
-        if (nodes_connections_.contains(migrating_ip_port)) {
-            migrating_link = &nodes_connections_[migrating_ip_port];
+        observer_ptr<net::Connection> partner_link = nullptr;
+        if (nodes_connections_.contains(partner_ip_port)) {
+            partner_link = &nodes_connections_[partner_ip_port];
         }
 
-        if (migrating_link == nullptr) {
-            std::string ip = migrating_ip_port.substr(0, migrating_ip_port.find(":"));
-            int port = std::stoi(migrating_ip_port.substr(migrating_ip_port.find(":") + 1));
+        if (partner_link == nullptr) {
+            std::string ip = partner_ip_port.substr(0, partner_ip_port.find(":"));
+            int port = std::stoi(partner_ip_port.substr(partner_ip_port.find(":") + 1));
             if (!connect_to_node(ip, port)) {
                 return Status::new_error("Could not connect to node");
             }
-            migrating_link = &nodes_connections_[migrating_ip_port];
+            partner_link = &nodes_connections_[partner_ip_port];
         }
 
-        Command cmd{ std::to_string(slot), importing_ip, std::to_string(importing_port) };
-        send_instruction(*migrating_link, cmd, Instruction::c_MIGRATE_SLOT);
+        Command cmd{ std::to_string(slot), partner_ip, std::to_string(partner_port) };
+        send_instruction(*partner_link, cmd, instruction);
 
         //handle response
-        ResponseData response = get_response(*migrating_link);
+        ResponseData response = get_response(*partner_link);
         MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
         Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
         ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
@@ -426,7 +426,7 @@ namespace client {
             if (!handle_move(received_cmd, slot)) {
                 return Status::new_error("Could not connect to new node");
             }
-            return migrate_slot(slot, importing_ip, importing_port);
+            return handle_slot_migration(slot, partner_ip, partner_port, instruction);
         }
 
         default:
@@ -436,58 +436,12 @@ namespace client {
         }
     }
 
+
+    Status Client::migrate_slot(uint16_t slot, const std::string& importing_ip, int importing_port) {
+        return handle_slot_migration(slot, importing_ip, importing_port, Instruction::c_MIGRATE_SLOT);
+    }
+
     Status Client::import_slot(uint16_t slot, const std::string& migrating_ip, int migrating_port) {
-        std::string& importing_ip_port = slots_nodes_[slot];
-        if (importing_ip_port == "") {
-            return Status::new_error("Slot is not handled by a known node");
-        }
-
-        observer_ptr<net::Connection> importing_link = nullptr;
-        if (nodes_connections_.contains(importing_ip_port)) {
-            importing_link = &nodes_connections_[importing_ip_port];
-        }
-
-        if (importing_link == nullptr) {
-            std::string ip = importing_ip_port.substr(0, importing_ip_port.find(":"));
-            int port = std::stoi(importing_ip_port.substr(importing_ip_port.find(":") + 1));
-            if (!connect_to_node(ip, port)) {
-                return Status::new_error("Could not connect to node");
-            }
-            importing_link = &nodes_connections_[importing_ip_port];
-        }
-
-        Command cmd{ std::to_string(slot), migrating_ip, std::to_string(migrating_port) };
-        send_instruction(*importing_link, cmd, Instruction::c_IMPORT_SLOT);
-
-        //handle response
-        ResponseData response = get_response(*importing_link);
-        MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
-        Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
-        ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
-
-        switch (received_meta_data.instruction) {
-        case Instruction::c_ERROR_RESPONSE:
-        {
-            return Status::new_error(received_payload.to_string());
-        }
-
-        case Instruction::c_OK_RESPONSE:
-        {
-            return Status::new_ok();
-        }
-
-        case Instruction::c_MOVE:
-        {
-            if (!handle_move(received_cmd, slot)) {
-                return Status::new_error("Could not connect to new node");
-            }
-            return migrate_slot(slot, migrating_ip, migrating_port);
-        }
-
-        default:
-        {
-            return Status::new_unknown_response("Unknown response");
-        }
-        }
+        return handle_slot_migration(slot, migrating_ip, migrating_port, Instruction::c_IMPORT_SLOT);
     }
 }  // namespace client
