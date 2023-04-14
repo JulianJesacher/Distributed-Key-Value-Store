@@ -21,8 +21,11 @@ namespace net {
         epoll_ctl(epoll_fd_.unwrap(), EPOLL_CTL_ADD, fd, &event);
     }
 
-    void Epoll::remove(FileDescriptor& fd) {
+    void Epoll::remove_event(FileDescriptor& fd) {
         epoll_ctl(epoll_fd_.unwrap(), EPOLL_CTL_DEL, fd.unwrap(), nullptr);
+    }
+    void Epoll::remove_event(int fd) {
+        epoll_ctl(epoll_fd_.unwrap(), EPOLL_CTL_DEL, fd, nullptr);
     }
 
     void Epoll::reset_occurred_events() {

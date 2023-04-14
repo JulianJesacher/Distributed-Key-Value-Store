@@ -96,6 +96,14 @@ namespace node {
         }
     }
 
+    void Node::disconnect(net::Connection& connection) {
+        if (connection.fd() == -1 || !fd_to_connection_.contains(connection.fd())) {
+            return;
+        }
+        connections_epoll_.remove_event(connection.fd());
+        fd_to_connection_.erase(connection.fd());
+    }
+
     void Node::handle_connection(net::Connection& connection) {
         try {
             MetaData meta_data = node::protocol::get_metadata(connection);
@@ -103,6 +111,7 @@ namespace node {
             execute_instruction(connection, meta_data, command);
         }
         catch (const std::exception& e) {
+            disconnect(connection);
             return;
         }
     }

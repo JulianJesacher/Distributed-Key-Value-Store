@@ -58,6 +58,8 @@ namespace node {
     private:
         void main_loop();
 
+        void disconnect(net::Connection& connection);
+
         std::unique_ptr<key_value_store::IKeyValueStore> kvs_;
         cluster::ClusterState cluster_state_;
         net::Epoll connections_epoll_;

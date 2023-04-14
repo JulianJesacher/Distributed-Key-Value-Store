@@ -15,7 +15,8 @@ namespace net {
 
         void add_event(int fd, uint32_t events = EPOLLIN | EPOLLET);
         void add_event(FileDescriptor& fd, uint32_t events = EPOLLIN | EPOLLET);
-        void remove(FileDescriptor& fd);
+        void remove_event(FileDescriptor& fd);
+        void remove_event(int fd);
         void reset_occurred_events();
 
         [[nodiscard]] int wait(int timeout = -1);
