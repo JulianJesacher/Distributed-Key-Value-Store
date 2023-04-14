@@ -583,3 +583,100 @@ TEST_CASE("Test update slot info") {
         thread2.join();
     }
 }
+
+
+void compare_cluster_node(const ClusterNode& node1, const ClusterNode& node2) {
+    CHECK_EQ(node1.name, node2.name);
+    CHECK_EQ(node1.ip, node2.ip);
+    CHECK_EQ(node1.cluster_port, node2.cluster_port);
+    CHECK_EQ(node1.client_port, node2.client_port);
+    CHECK_EQ(node1.served_slots, node2.served_slots);
+    CHECK_EQ(node1.num_slots_served, node2.num_slots_served);
+}
+
+
+TEST_CASE("Test migrate slot") {
+    uint16_t client_port0 = 8080, cluster_port0 = 8081;
+    uint16_t client_port1 = 8082, cluster_port1 = 8083;
+    Node node0{ client_port0, cluster_port0 };
+    Node node1{ client_port1, cluster_port1 };
+    ClusterNode cluster_node0{ "node0", "127.0.0.1", cluster_port0, client_port0 };
+    ClusterNode cluster_node1{ "node1", "127.0.0.1", cluster_port1, client_port1 };
+    Client client0{}, client1{};
+
+    //Start nodes
+    std::thread thread0{&Node::start, & node0};
+    std::thread thread1{&Node::start, & node1};
+    std::this_thread::sleep_for(100ms);
+
+    CHECK(client0.connect_to_node("127.0.0.1", client_port0));
+    CHECK(client1.connect_to_node("127.0.0.1", client_port1));
+
+    SUBCASE("Other node not in cluster") {
+        for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; i++) {
+            node0.get_cluster_state().myself.served_slots[i] = true;
+            node0.get_cluster_state().slots[i].state = cluster::SlotState::c_NORMAL;
+            node0.get_cluster_state().slots[i].migration_partner = nullptr;
+            client0.get_slot_nodes()[i] = "127.0.0.1:" + std::to_string(client_port0);
+        }
+        client0.disconnect_all();
+
+        auto status = client0.migrate_slot(0, "127.0.0.1", client_port1);
+        CHECK(status.is_error());
+        CHECK_EQ("Other node not part of the cluster", status.get_msg());
+    }
+
+    SUBCASE("Migrating slot has no keys") {
+        for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; i++) {
+            node0.get_cluster_state().myself.served_slots[i] = true;
+            node0.get_cluster_state().slots[i].state = cluster::SlotState::c_NORMAL;
+            node0.get_cluster_state().slots[i].migration_partner = nullptr;
+            client0.get_slot_nodes()[i] = "127.0.0.1:" + std::to_string(client_port0);
+        }
+
+        net::Socket socket{};
+        net::Connection cluster_bus = socket.connect("127.0.0.1", cluster_port1);
+        cluster_node1.outgoing_link = cluster_bus;
+        node0.get_cluster_state().nodes["node1"] = cluster_node1;
+
+        auto status = client0.migrate_slot(0, "127.0.0.1", client_port1);
+        CHECK(status.is_ok());
+        CHECK_EQ(0, status.get_msg().size());
+
+        //Because the slot has no keys, it should be migrated immediately
+        CHECK_EQ(cluster::SlotState::c_NORMAL, node0.get_cluster_state().slots[0].state);
+        CHECK_EQ(nullptr, node0.get_cluster_state().slots[0].migration_partner);
+    }
+
+    SUBCASE("Normal behavior") {
+        for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; i++) {
+            node0.get_cluster_state().myself.served_slots[i] = true;
+            node0.get_cluster_state().slots[i].state = cluster::SlotState::c_NORMAL;
+            node0.get_cluster_state().slots[i].migration_partner = nullptr;
+            node0.get_cluster_state().slots[i].amount_of_keys = 1;
+            client0.get_slot_nodes()[i] = "127.0.0.1:" + std::to_string(client_port0);
+        }
+
+        net::Socket socket{};
+        net::Connection cluster_bus = socket.connect("127.0.0.1", cluster_port1);
+        cluster_node1.outgoing_link = cluster_bus;
+        node0.get_cluster_state().nodes["node1"] = cluster_node1;
+
+        auto status = client0.migrate_slot(0, "127.0.0.1", client_port1);
+        CHECK(status.is_ok());
+        CHECK_EQ(0, status.get_msg().size());
+
+        CHECK_EQ(cluster::SlotState::c_MIGRATING, node0.get_cluster_state().slots[0].state);
+        compare_cluster_node(cluster_node1, *node0.get_cluster_state().slots[0].migration_partner);
+    }
+
+    //Stop nodes
+    node0.stop();
+    node1.stop();
+    if (thread0.joinable()) {
+        thread0.join();
+    }
+    if (thread1.joinable()) {
+        thread1.join();
+    }
+}

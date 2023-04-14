@@ -37,6 +37,8 @@ namespace client {
 
         Status get_update_slot_info();
 
+        Status migrate_slot(uint16_t slot, const std::string& importing_ip, int importing_port);
+
     private:
 
         bool handle_move(node::protocol::Command& received_cmd, uint16_t slot);

@@ -381,4 +381,58 @@ namespace client {
         }
     }
 
+    Status Client::migrate_slot(uint16_t slot, const std::string& importing_ip, int importing_port) {
+        std::string& migrating_ip_port = slots_nodes_[slot];
+        if (migrating_ip_port == "") {
+            return Status::new_error("Slot is not handled by a known node");
+        }
+
+        observer_ptr<net::Connection> migrating_link = nullptr;
+        if (nodes_connections_.contains(migrating_ip_port)) {
+            migrating_link = &nodes_connections_[migrating_ip_port];
+        }
+
+        if (migrating_link == nullptr) {
+            std::string ip = migrating_ip_port.substr(0, migrating_ip_port.find(":"));
+            int port = std::stoi(migrating_ip_port.substr(migrating_ip_port.find(":") + 1));
+            if (!connect_to_node(ip, port)) {
+                return Status::new_error("Could not connect to node");
+            }
+            migrating_link = &nodes_connections_[migrating_ip_port];
+        }
+
+        Command cmd{ std::to_string(slot), importing_ip, std::to_string(importing_port) };
+        send_instruction(*migrating_link, cmd, Instruction::c_MIGRATE_SLOT);
+
+        //handle response
+        ResponseData response = get_response(*migrating_link);
+        MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
+        Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
+        ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
+
+        switch (received_meta_data.instruction) {
+        case Instruction::c_ERROR_RESPONSE:
+        {
+            return Status::new_error(received_payload.to_string());
+        }
+
+        case Instruction::c_OK_RESPONSE:
+        {
+            return Status::new_ok();
+        }
+
+        case Instruction::c_MOVE:
+        {
+            if (!handle_move(received_cmd, slot)) {
+                return Status::new_error("Could not connect to new node");
+            }
+            return migrate_slot(slot, importing_ip, importing_port);
+        }
+
+        default:
+        {
+            return Status::new_unknown_response("Unknown response");
+        }
+        }
+    }
 }  // namespace client
