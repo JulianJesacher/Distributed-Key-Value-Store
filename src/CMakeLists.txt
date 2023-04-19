@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
 
-#ByteArray library
+# ByteArray library
 add_library(ByteArray_l
     utils/ByteArray.hpp
     utils/ByteArray.cpp
 )
 target_include_directories(ByteArray_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-#KeyValueStore library
-add_library(KeyValueStore_l 
+# KeyValueStore library
+add_library(KeyValueStore_l
     KVS/IKeyValueStore.hpp
     KVS/InMemoryKVS.hpp
     KVS/InMemoryKVS.cpp
@@ -19,7 +19,7 @@ add_library(KeyValueStore_l
 )
 target_include_directories(KeyValueStore_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-#Networking library
+# Networking library
 add_library(Networking_l
     net/FileDescriptor.hpp
     net/FileDescriptor.cpp
@@ -32,7 +32,7 @@ add_library(Networking_l
 )
 target_include_directories(Networking_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-#Node library
+# Node library
 add_library(Node_l
     node/ProtocolHandler.hpp
     node/ProtocolHandler.cpp
@@ -62,7 +62,7 @@ add_library(Node_l
 )
 target_include_directories(Node_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-#Client library
+# Client library
 add_library(Client_l
     client/Client.hpp
     client/Client.cpp
@@ -93,3 +93,11 @@ add_library(Client_l
     net/Epoll.cpp
 )
 target_include_directories(Client_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Node executable
+add_executable(Node node/main.cpp)
+target_link_libraries(Node Node_l)
+
+#Client-cli executable
+add_executable(Client-cli client/Client-cli.cpp)
+target_link_libraries(Client-cli Client_l)
