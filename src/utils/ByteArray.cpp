@@ -68,6 +68,10 @@ void AllocatedByteArrayResource::resize(uint64_t target_size) {
 }
 
 //ByteArray
+ByteArray::ByteArray() {
+    resource_ = std::make_shared<AllocatedByteArrayResource>(0);
+}
+
 ByteArray::ByteArray(ByteArray&& other) noexcept {
     resource_ = std::move(other.resource_);
     other.resource_ = nullptr;

@@ -52,7 +52,7 @@ private:
 class ByteArray {
 public:
 
-    ByteArray() = default;
+    ByteArray();
 
     ByteArray(const ByteArray& other) = default;
     ByteArray& operator=(const ByteArray& other) = default;
