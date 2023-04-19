@@ -191,7 +191,7 @@ namespace node::instruction_handler {
         if (state.is_ok()) {
             cluster_state.slots[slot].amount_of_keys -= 1;
 
-            if (cluster_state.slots[slot].amount_of_keys == 0) {
+            if (cluster_state.slots[slot].amount_of_keys == 0 && cluster_state.slots[slot].state == cluster::SlotState::c_MIGRATING) {
                 cluster::ClusterNode migration_partner = *cluster_state.slots[slot].migration_partner;
 
                 cluster_state.slots[slot].state = cluster::SlotState::c_NORMAL;
