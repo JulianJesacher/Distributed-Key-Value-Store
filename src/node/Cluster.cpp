@@ -94,6 +94,10 @@ namespace node::cluster {
         net::Socket socket{};
         ClusterNode node{};
 
+        if (state.nodes.contains(name)) {
+            return Status::new_error("Node with name " + name + " already in cluster");
+        }
+
         try {
             net::Connection link = socket.connect(ip, cluster_port);
             node.outgoing_link = std::move(link);
