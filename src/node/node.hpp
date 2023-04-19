@@ -1,6 +1,7 @@
 #include <memory>
 #include <unordered_map>
 #include <atomic>
+#include <string>
 
 #include "../KVS/IKeyValueStore.hpp"
 #include "../KVS/InMemoryKVS.hpp"
@@ -16,19 +17,13 @@ namespace node {
     class Node {
     public:
 
-        Node(int client_port = 3000, int cluster_port = 13000): Node{ std::make_unique<key_value_store::InMemoryKVS>(), cluster::ClusterState(), client_port, cluster_port } {}
-
-        Node(std::unique_ptr<key_value_store::IKeyValueStore> kvs, cluster::ClusterState state, int client_port, int cluster_port);
-
         //Disable copying and moving
         Node(const Node&) = delete;
         Node& operator=(const Node&) = delete;
         Node(Node&&) = delete;
         Node& operator=(Node&&) = delete;
 
-        static Node new_in_memory_node(cluster::ClusterState state, int client_port = 3000, int cluster_port = 13000) {
-            return Node{ std::make_unique<key_value_store::InMemoryKVS>(), state, client_port, cluster_port };
-        }
+        static Node new_in_memory_node(std::string name, uint16_t client_port, uint16_t cluster_port, std::string ip);
 
         key_value_store::IKeyValueStore& get_kvs() const {
             return *kvs_;
@@ -55,7 +50,17 @@ namespace node {
             return connections_epoll_;
         }
 
+        void set_cluster_state(cluster::ClusterState cluster_state) {
+            cluster_state_ = cluster_state;
+        }
+
     private:
+        Node(std::unique_ptr<key_value_store::IKeyValueStore> kvs,
+            uint16_t client_port,
+            uint16_t cluster_port,
+            std::array<char, cluster::CLUSTER_NAME_LEN> name,
+            std::array<char, cluster::CLUSTER_IP_LEN> ip);
+
         void main_loop();
 
         void disconnect(net::Connection& connection);
@@ -65,8 +70,10 @@ namespace node {
         net::Epoll connections_epoll_;
         std::unordered_map<int, net::Connection> fd_to_connection_;
 
-        int client_port_;
-        int cluster_port_;
+        uint16_t client_port_;
+        uint16_t cluster_port_;
         std::atomic<bool> running_;
+        std::array<char, cluster::CLUSTER_NAME_LEN> name_;
+        std::array<char, cluster::CLUSTER_IP_LEN> ip_;
     };
 }

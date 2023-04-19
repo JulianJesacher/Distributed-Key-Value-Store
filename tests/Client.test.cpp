@@ -18,7 +18,7 @@ using namespace std::chrono_literals;
 TEST_CASE("Test connect") {
     int client_port0 = 8080, cluster_port0 = 8081;
     Client client0{};
-    Node node0{ client_port0, cluster_port0 };
+    Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
 
     auto thread0 = std::thread(&Node::start, &node0);
     std::this_thread::sleep_for(100ms);
@@ -69,8 +69,8 @@ TEST_CASE("Test connect") {
 TEST_CASE("Test put") {
     uint16_t client_port0 = 8080, cluster_port0 = 8081;
     uint16_t client_port1 = 8082, cluster_port1 = 8083;
-    Node node0{ client_port0, cluster_port0 };
-    Node node1{ client_port1, cluster_port1 };
+    Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
+    Node node1 = Node::new_in_memory_node("node1", client_port1, cluster_port1, "127.0.0.1");
     ClusterNode cluster_node0{ "node0", "127.0.0.1", cluster_port0, client_port0 };
     ClusterNode cluster_node1{ "node1", "127.0.0.1", cluster_port1, client_port1 };
     Client client0{}, client1{};
@@ -203,8 +203,8 @@ TEST_CASE("Test put") {
 TEST_CASE("Get value") {
     uint16_t client_port0 = 8080, cluster_port0 = 8081;
     uint16_t client_port1 = 8082, cluster_port1 = 8083;
-    Node node0{ client_port0, cluster_port0 };
-    Node node1{ client_port1, cluster_port1 };
+    Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
+    Node node1 = Node::new_in_memory_node("node1", client_port1, cluster_port1, "127.0.0.1");
     ClusterNode cluster_node0{ "node0", "127.0.0.1", cluster_port0, client_port0 };
     ClusterNode cluster_node1{ "node1", "127.0.0.1", cluster_port1, client_port1 };
     Client client0{}, client1{};
@@ -385,8 +385,8 @@ TEST_CASE("Get value") {
 TEST_CASE("Test erase value") {
     uint16_t client_port0 = 8080, cluster_port0 = 8081;
     uint16_t client_port1 = 8082, cluster_port1 = 8083;
-    Node node0{ client_port0, cluster_port0 };
-    Node node1{ client_port1, cluster_port1 };
+    Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
+    Node node1 = Node::new_in_memory_node("node1", client_port1, cluster_port1, "127.0.0.1");
     ClusterNode cluster_node0{ "node0", "127.0.0.1", cluster_port0, client_port0 };
     ClusterNode cluster_node1{ "node1", "127.0.0.1", cluster_port1, client_port1 };
     Client client0{}, client1{};
@@ -527,9 +527,9 @@ TEST_CASE("Test update slot info") {
     uint16_t client_port0 = 8080, cluster_port0 = 8081;
     uint16_t client_port1 = 8082, cluster_port1 = 8083;
     uint16_t client_port2 = 8084, cluster_port2 = 8085;
-    Node node0{ client_port0, cluster_port0 };
-    Node node1{ client_port1, cluster_port1 };
-    Node node2{ client_port2, cluster_port2 };
+    Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
+    Node node1 = Node::new_in_memory_node("node1", client_port1, cluster_port1, "127.0.0.1");
+    Node node2 = Node::new_in_memory_node("node2", client_port2, cluster_port2, "127.0.0.1");
     ClusterNode cluster_node0{ "node0", "127.0.0.1", cluster_port0, client_port0 };
     ClusterNode cluster_node1{ "node1", "127.0.0.1", cluster_port1, client_port1 };
     ClusterNode cluster_node2{ "node2", "127.0.0.1", cluster_port2, client_port2 };
@@ -602,8 +602,8 @@ void compare_cluster_node(const ClusterNode& node1, const ClusterNode& node2) {
 TEST_CASE("Test migrate slot") {
     uint16_t client_port0 = 8080, cluster_port0 = 8081;
     uint16_t client_port1 = 8082, cluster_port1 = 8083;
-    Node node0{ client_port0, cluster_port0 };
-    Node node1{ client_port1, cluster_port1 };
+    Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
+    Node node1 = Node::new_in_memory_node("node1", client_port1, cluster_port1, "127.0.0.1");
     ClusterNode cluster_node0{ "node0", "127.0.0.1", cluster_port0, client_port0 };
     ClusterNode cluster_node1{ "node1", "127.0.0.1", cluster_port1, client_port1 };
     Client client0{}, client1{};
@@ -689,8 +689,8 @@ TEST_CASE("Test migrate slot") {
 TEST_CASE("Test import slot") {
     uint16_t client_port0 = 8080, cluster_port0 = 8081;
     uint16_t client_port1 = 8082, cluster_port1 = 8083;
-    Node node0{ client_port0, cluster_port0 };
-    Node node1{ client_port1, cluster_port1 };
+    Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
+    Node node1 = Node::new_in_memory_node("node1", client_port1, cluster_port1, "127.0.0.1");
     ClusterNode cluster_node0{ "node0", "127.0.0.1", cluster_port0, client_port0 };
     ClusterNode cluster_node1{ "node1", "127.0.0.1", cluster_port1, client_port1 };
     Client client0{}, client1{};

@@ -148,23 +148,24 @@ TEST_CASE("Hashing") {
 
 
 TEST_CASE("test sharding") {
-    key_value_store::InMemoryKVS kvs1{};
-    key_value_store::InMemoryKVS kvs2{};
+    uint16_t client_port1{ 3000 }, client_port2{ 9000 }, cluster_port{ 3001 };
+    Node server1 = Node::new_in_memory_node("node1", client_port1, cluster_port, "127.0.0.1");
+    Node server2 = Node::new_in_memory_node("node2", client_port2, cluster_port, "127.0.0.1");
 
-    ClusterNode node1{ "node1", "127.0.0.1", 3002, 3000, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
+    ClusterNode node1{ "node1", "127.0.0.1", cluster_port, client_port1, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
     ClusterNode node2 = node1;
+    node2.client_port = client_port2;
     std::vector<Slot> slots{ {&node1, 0, SlotState::c_NORMAL}, { &node1, 1, SlotState::c_NORMAL }, { &node2, 2, SlotState::c_NORMAL } };
-    node2.client_port = 9000;
 
     node1.served_slots[0] = true;
     node1.served_slots[1] = true;
     node2.served_slots[2] = true;
 
     ClusterState state1{
-        {{"node1", node1}, {"node2", node2}},
-        2,
-        slots,
-        node1 };
+            {{"node1", node1}, {"node2", node2}},
+            2,
+            slots,
+            node1 };
 
     ClusterState state2{
         {{"node1", node1}, {"node2", node2}},
@@ -172,12 +173,10 @@ TEST_CASE("test sharding") {
         slots,
         node2 };
 
-    Node server1 = Node::new_in_memory_node(state1);
-    Node server2 = Node::new_in_memory_node(state2);
+    server1.set_cluster_state(state1);
+    server2.set_cluster_state(state2);
 
-    int port{ 3000 };
-
-    auto process_instruction = [&](Node& server) {
+    auto process_instruction = [&](Node& server, int port) {
         net::Socket socket{};
         if (!net::is_listening(socket.fd())) {
             socket.listen(port);
@@ -187,8 +186,9 @@ TEST_CASE("test sharding") {
         server.handle_connection(connection);
     };
 
-    auto send_instruction = [&](Node& server, const protocol::Command command, protocol::Instruction instruction, const std::string& payload) {
-        net::Connection connection = net::Socket{}.connect(port);
+    auto send_instruction = [&](const protocol::Command command, protocol::Instruction instruction, const std::string& payload, int port) {
+        net::Socket socket{};
+        net::Connection connection = socket.connect(port);
         node::protocol::send_instruction(connection, command, instruction, payload);
 
         auto received_metadata = protocol::get_metadata(connection);
@@ -200,12 +200,10 @@ TEST_CASE("test sharding") {
 
     SUBCASE("Test correct node") {
         std::string key = get_key_with_target_slot(0);
-
-        auto received = std::async(process_instruction, std::ref(server1));
+        auto received = std::async(process_instruction, std::ref(server1), client_port1);
         std::this_thread::sleep_for(100ms);
 
-        auto sent = std::async(send_instruction, std::ref(server2), protocol::Command{ key, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
-
+        auto sent = std::async(send_instruction, protocol::Command{ key, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123", client_port1);
         auto [actual_metadata, actual_command, actual_payload] = sent.get();
         received.get();
 
@@ -224,13 +222,11 @@ TEST_CASE("test sharding") {
 
     SUBCASE("Test wrong node") {
         std::string key = get_key_with_target_slot(2);
-
-        auto received = std::async(process_instruction, std::ref(server1));
+        auto received = std::async(process_instruction, std::ref(server1), client_port1);
         std::this_thread::sleep_for(100ms);
 
-        auto sent = std::async(send_instruction, std::ref(server2), protocol::Command{ key, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123");
+        auto sent = std::async(send_instruction, protocol::Command{ key, "10", "0" }, protocol::Instruction::c_PUT, "TestVal123", client_port1);
         auto [actual_metadata, actual_command, actual_payload] = sent.get();
-
         received.get();
 
         //Check metadata
@@ -242,7 +238,7 @@ TEST_CASE("test sharding") {
         //Check command
         CHECK_EQ(actual_command.size(), 2);
         CHECK_EQ(actual_command[0], "127.0.0.1");
-        CHECK_EQ(actual_command[1], "9000");
+        CHECK_EQ(actual_command[1], std::to_string(client_port2));
 
         //Check payload
         CHECK_EQ(actual_payload.size(), 0);
@@ -253,6 +249,9 @@ TEST_CASE("test sharding") {
 TEST_CASE("Test migrating slot") {
     uint16_t cluster_port = 4000;
     uint16_t client_port0 = 3000, client_port1 = 3001;
+
+    Node server0 = Node::new_in_memory_node("node0", client_port0, cluster_port, "127.0.0.1");
+    Node server1 = Node::new_in_memory_node("node1", client_port1, cluster_port, "127.0.0.1");
 
     ClusterNode node0{ "node0", "127.0.0.1", cluster_port, client_port0, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
     ClusterNode node1{ "node1", "127.0.0.1", cluster_port, client_port1, std::bitset<CLUSTER_AMOUNT_OF_SLOTS>{}, 0 };
@@ -278,6 +277,9 @@ TEST_CASE("Test migrating slot") {
         slots,
         node1 };
 
+    server0.set_cluster_state(state0);
+    server1.set_cluster_state(state1);
+
     //Set up connection from node0 to node1
     net::Epoll epoll{};
     net::Socket socket0{}, socket1{};
@@ -287,10 +289,7 @@ TEST_CASE("Test migrating slot") {
 
     epoll.add_event(connection1.fd());
     epoll.reset_occurred_events();
-    state0.nodes["node1"].outgoing_link = connection0;
-
-    Node server0 = Node::new_in_memory_node(state0);
-    Node server1 = Node::new_in_memory_node(state1);
+    server0.get_cluster_state().nodes["node1"].outgoing_link = connection0;
 
 
     auto process_instruction = [&](Node& server, uint16_t port) {
@@ -541,9 +540,9 @@ TEST_CASE("Test migrating slot") {
 
 
 TEST_CASE("Test get slots") {
-    Node server{};
+    uint16_t cluster_port = 3000, client_port = 4000;
+    Node server = Node::new_in_memory_node("node", client_port, cluster_port, "127.0.0.1");
     cluster::ClusterState& state = server.get_cluster_state();
-    uint16_t server_port = 3000;
 
     cluster::ClusterNode node1{ "node1", "127.0.0.1", 4000, 3001 };
     cluster::ClusterNode node2{ "node2", "127.0.0.1", 4000, 3002 };
@@ -554,8 +553,8 @@ TEST_CASE("Test get slots") {
     state.slots[2].served_by = &node2;
     state.slots[3].served_by = &node3;
 
-    auto send_instruction = [&server_port]() {
-        auto connection = net::Socket{}.connect(server_port);
+    auto send_instruction = [&cluster_port]() {
+        auto connection = net::Socket{}.connect(cluster_port);
         protocol::send_instruction(connection, protocol::Command{}, protocol::Instruction::c_GET_SLOTS, "");
 
         auto received_metadata = protocol::get_metadata(connection);
@@ -565,10 +564,10 @@ TEST_CASE("Test get slots") {
         return std::make_tuple(received_metadata, received_command, received_payload);
     };
 
-    auto handle_request = [&server_port, &server]() {
+    auto handle_request = [&cluster_port, &server]() {
         net::Socket socket{};
         if (!net::is_listening(socket.fd())) {
-            socket.listen(server_port);
+            socket.listen(cluster_port);
         }
 
         net::Connection connection = socket.accept();
@@ -597,4 +596,3 @@ TEST_CASE("Test get slots") {
     std::string expected_payload = "0\t0\tNULL\n1\t1\t127.0.0.1:3001\n2\t2\t127.0.0.1:3002\n3\t3\t127.0.0.100:3003\n4\t4\tNULL";
     CHECK_EQ(actual_payload.to_string(), expected_payload);
 }
-
