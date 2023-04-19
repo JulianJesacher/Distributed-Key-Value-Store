@@ -16,6 +16,8 @@ using namespace std::chrono_literals;
 
 
 TEST_CASE("Test connect") {
+    std::cout << "Test connect" << std::endl;
+
     int client_port0 = 8080, cluster_port0 = 8081;
     Client client0{};
     Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
@@ -44,20 +46,18 @@ TEST_CASE("Test connect") {
     }
 
     //TODO: Fix
-    /*
-    SUBCASE("Server terminates connection") {
-        //When the client connects to the node and the node stops, a subsequent receive call on the opened connection should return -1
-        CHECK(client0.connect_to_node("127.0.0.1", client_port0));
-        auto& connection = client0.get_nodes_connections()["127.0.0.1:" + std::to_string(client_port0)];
-
-        node0.stop();
-        thread0.join();
-        std::this_thread::sleep_for(100ms);
-
-        char buf[1];
-        CHECK(connection.receive(buf, 1) == -1);
-    }
-    */
+    //SUBCASE("Server terminates connection") {
+    //    //When the client connects to the node and the node stops, a subsequent receive call on the opened connection should return -1
+    //    CHECK(client0.connect_to_node("127.0.0.1", client_port0));
+    //    auto& connection = client0.get_nodes_connections()["127.0.0.1:" + std::to_string(client_port0)];
+    //
+    //    node0.stop();
+    //    thread0.join();
+    //    std::this_thread::sleep_for(100ms);
+    //
+    //    char buf[1];
+    //    CHECK(connection.receive(buf, 1) == -1);
+    //}
 
     node0.stop();
     if (thread0.joinable()) {
@@ -67,6 +67,8 @@ TEST_CASE("Test connect") {
 
 
 TEST_CASE("Test put") {
+    std::cout << "Test put" << std::endl;
+
     uint16_t client_port0 = 8080, cluster_port0 = 8081;
     uint16_t client_port1 = 8082, cluster_port1 = 8083;
     Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
@@ -200,7 +202,9 @@ TEST_CASE("Test put") {
 }
 
 
-TEST_CASE("Get value") {
+TEST_CASE("Test get") {
+    std::cout << "Test get" << std::endl;
+
     uint16_t client_port0 = 8080, cluster_port0 = 8081;
     uint16_t client_port1 = 8082, cluster_port1 = 8083;
     Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
@@ -382,7 +386,9 @@ TEST_CASE("Get value") {
 }
 
 
-TEST_CASE("Test erase value") {
+TEST_CASE("Test erase") {
+    std::cout << "Test erase" << std::endl;
+
     uint16_t client_port0 = 8080, cluster_port0 = 8081;
     uint16_t client_port1 = 8082, cluster_port1 = 8083;
     Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
@@ -524,6 +530,8 @@ TEST_CASE("Test erase value") {
 }
 
 TEST_CASE("Test update slot info") {
+    std::cout << "Test update slot info" << std::endl;
+
     uint16_t client_port0 = 8080, cluster_port0 = 8081;
     uint16_t client_port1 = 8082, cluster_port1 = 8083;
     uint16_t client_port2 = 8084, cluster_port2 = 8085;
@@ -536,9 +544,9 @@ TEST_CASE("Test update slot info") {
     Client client0{}, client1{}, client2{};
 
     //Start nodes
-    std::thread thread0{&Node::start, & node0};
-    std::thread thread1{&Node::start, & node1};
-    std::thread thread2{&Node::start, & node2};
+    auto thread0 = std::thread(&Node::start, &node0);
+    auto thread1 = std::thread(&Node::start, &node1);
+    auto thread2 = std::thread(&Node::start, &node2);
     std::this_thread::sleep_for(100ms);
 
     CHECK(client0.connect_to_node("127.0.0.1", client_port0));
@@ -600,6 +608,8 @@ void compare_cluster_node(const ClusterNode& node1, const ClusterNode& node2) {
 
 
 TEST_CASE("Test migrate slot") {
+    std::cout << "Test migrate slot" << std::endl;
+
     uint16_t client_port0 = 8080, cluster_port0 = 8081;
     uint16_t client_port1 = 8082, cluster_port1 = 8083;
     Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
@@ -609,8 +619,8 @@ TEST_CASE("Test migrate slot") {
     Client client0{}, client1{};
 
     //Start nodes
-    std::thread thread0{&Node::start, & node0};
-    std::thread thread1{&Node::start, & node1};
+    auto thread0 = std::thread(&Node::start, &node0);
+    auto thread1 = std::thread(&Node::start, &node1);
     std::this_thread::sleep_for(100ms);
 
     CHECK(client0.connect_to_node("127.0.0.1", client_port0));
@@ -687,6 +697,8 @@ TEST_CASE("Test migrate slot") {
 
 
 TEST_CASE("Test import slot") {
+    std::cout << "Test import slot" << std::endl;
+
     uint16_t client_port0 = 8080, cluster_port0 = 8081;
     uint16_t client_port1 = 8082, cluster_port1 = 8083;
     Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
@@ -696,8 +708,8 @@ TEST_CASE("Test import slot") {
     Client client0{}, client1{};
 
     //Start nodes
-    std::thread thread0{&Node::start, & node0};
-    std::thread thread1{&Node::start, & node1};
+    auto thread0 = std::thread(&Node::start, &node0);
+    auto thread1 = std::thread(&Node::start, &node1);
     std::this_thread::sleep_for(100ms);
 
     CHECK(client0.connect_to_node("127.0.0.1", client_port0));
@@ -759,6 +771,59 @@ TEST_CASE("Test import slot") {
 
         CHECK_EQ(cluster::SlotState::c_MIGRATING, node0.get_cluster_state().slots[0].state);
         compare_cluster_node(cluster_node1, *node0.get_cluster_state().slots[0].migration_partner);
+    }
+
+    //Stop nodes
+    node0.stop();
+    node1.stop();
+    if (thread0.joinable()) {
+        thread0.join();
+    }
+    if (thread1.joinable()) {
+        thread1.join();
+    }
+}
+
+
+TEST_CASE("Test add node") {
+    std::cout << "Test add node" << std::endl;
+
+    uint16_t client_port0 = 8080, cluster_port0 = 8081;
+    uint16_t client_port1 = 8082, cluster_port1 = 8083;
+    Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
+    Node node1 = Node::new_in_memory_node("node1", client_port1, cluster_port1, "127.0.0.1");
+    ClusterNode cluster_node1{ "node1", "127.0.0.1", cluster_port1, client_port1 };
+    Client client0{};
+
+    //Start nodes
+    auto thread0 = std::thread{ &Node::start, &node0 };
+    auto thread1 = std::thread{ &Node::start, &node1 };
+    std::this_thread::sleep_for(100ms);
+
+    CHECK(client0.connect_to_node("127.0.0.1", client_port0));
+
+    SUBCASE("Normal") {
+        auto status = client0.add_node_to_cluster("node1", "127.0.0.1", client_port1, cluster_port1);
+
+        CHECK(status.is_ok());
+        CHECK_EQ(0, status.get_msg().size());
+
+        CHECK_EQ(1, node0.get_cluster_state().nodes.size());
+        auto actual_node = node0.get_cluster_state().nodes["node1"];
+        std::string expected_name("node1");
+
+        CHECK(memcmp(expected_name.data(), actual_node.name.data(), expected_name.size()) == 0);
+        CHECK_EQ(client_port1, actual_node.client_port);
+        CHECK_EQ(cluster_port1, actual_node.cluster_port);
+    }
+
+    SUBCASE("Node already in cluster") {
+        auto status = client0.add_node_to_cluster("node1", "127.0.0.1", client_port1, cluster_port1);
+        CHECK(status.is_ok());
+
+        status = client0.add_node_to_cluster("node1", "127.0.0.1", client_port1, cluster_port1);
+        CHECK(status.is_error());
+        CHECK_EQ("Node with name node1 already in cluster", status.get_msg());
     }
 
     //Stop nodes

@@ -444,4 +444,35 @@ namespace client {
     Status Client::import_slot(uint16_t slot, const std::string& migrating_ip, int migrating_port) {
         return handle_slot_migration(slot, migrating_ip, migrating_port, Instruction::c_IMPORT_SLOT);
     }
+
+    Status Client::add_node_to_cluster(const std::string& name, const std::string& ip, int client_port, int cluster_port) {
+        observer_ptr<net::Connection> link = get_random_connection();
+        if (link == nullptr) {
+            return Status::new_error("Not connected to any node");
+        }
+
+        Command cmd{ ip, std::to_string(client_port), std::to_string(cluster_port), name };
+        send_instruction(*link, cmd, Instruction::c_MEET);
+
+        //handle response
+        ResponseData response = get_response(*link);
+        MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
+        Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
+        ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
+
+        switch (received_meta_data.instruction) {
+        case Instruction::c_ERROR_RESPONSE:
+        {
+            return Status::new_error(received_payload.to_string());
+        }
+        case Instruction::c_OK_RESPONSE:
+        {
+            return Status::new_ok();
+        }
+        default:
+        {
+            return Status::new_unknown_response("Unknown response");
+        }
+        }
+    }
 }  // namespace client

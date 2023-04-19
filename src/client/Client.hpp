@@ -41,6 +41,8 @@ namespace client {
 
         Status import_slot(uint16_t slot, const std::string& migrating_ip, int migrating_port);
 
+        Status add_node_to_cluster(const std::string& name, const std::string& ip, int client_port, int cluster_port);
+
     private:
 
         bool handle_move(node::protocol::Command& received_cmd, uint16_t slot);
