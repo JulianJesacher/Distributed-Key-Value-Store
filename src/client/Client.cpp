@@ -15,16 +15,16 @@ namespace client {
         return ip + ":" + port;
     }
 
-    bool Client::connect_to_node(const std::string& ip, int port) {
+    Status Client::connect_to_node(const std::string& ip, int port) {
         net::Socket socket{};
         std::string ip_port = get_ip_port(ip, port);
         try {
             nodes_connections_.emplace(ip_port, socket.connect(ip, port));
         }
         catch (std::runtime_error& e) {
-            return false;
+            return Status::new_error(e.what());
         }
-        return true;
+        return Status::new_ok();
     }
 
     void Client::disconnect_all() {
@@ -61,7 +61,7 @@ namespace client {
         std::string ip_port = get_ip_port(ip, port);
 
         if (!nodes_connections_.contains(ip_port)) {
-            if (!connect_to_node(ip, port)) {
+            if (!connect_to_node(ip, port).is_ok()) {
                 return false;
             }
             slots_nodes_[slot] = ip_port;
@@ -161,7 +161,7 @@ namespace client {
         std::string ip_port = get_ip_port(ip, port);
 
         if (!nodes_connections_.contains(ip_port)) {
-            if (!connect_to_node(ip, port)) {
+            if (!connect_to_node(ip, port).is_ok()) {
                 return false;
             }
         }
@@ -174,7 +174,7 @@ namespace client {
         std::string ip_port = get_ip_port(ip, port);
 
         if (!nodes_connections_.contains(ip_port)) {
-            if (!connect_to_node(ip, port)) {
+            if (!connect_to_node(ip, port).is_ok()) {
                 return false;
             }
         }
@@ -395,7 +395,7 @@ namespace client {
         if (partner_link == nullptr) {
             std::string ip = partner_ip_port.substr(0, partner_ip_port.find(":"));
             int port = std::stoi(partner_ip_port.substr(partner_ip_port.find(":") + 1));
-            if (!connect_to_node(ip, port)) {
+            if (!connect_to_node(ip, port).is_ok()) {
                 return Status::new_error("Could not connect to node");
             }
             partner_link = &nodes_connections_[partner_ip_port];

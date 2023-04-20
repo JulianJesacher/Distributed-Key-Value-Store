@@ -15,7 +15,7 @@ namespace client {
 
         Client() = default;
 
-        bool connect_to_node(const std::string& ip, int port);
+        Status connect_to_node(const std::string& ip, int port);
 
         void disconnect_all();
 

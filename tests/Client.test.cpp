@@ -85,8 +85,8 @@ TEST_CASE("Test put") {
     auto thread1 = std::thread(&Node::start, &node1);
     std::this_thread::sleep_for(100ms);
 
-    CHECK(client0.connect_to_node("127.0.0.1", client_port0));
-    CHECK(client1.connect_to_node("127.0.0.1", client_port1));
+    CHECK(client0.connect_to_node("127.0.0.1", client_port0).is_ok());
+    CHECK(client1.connect_to_node("127.0.0.1", client_port1).is_ok());
     CHECK_EQ(0, node0.get_kvs().get_size());
 
 
@@ -221,8 +221,8 @@ TEST_CASE("Test get") {
     auto thread1 = std::thread(&Node::start, &node1);
     std::this_thread::sleep_for(100ms);
 
-    CHECK(client0.connect_to_node("127.0.0.1", client_port0));
-    CHECK(client1.connect_to_node("127.0.0.1", client_port1));
+    CHECK(client0.connect_to_node("127.0.0.1", client_port0).is_ok());
+    CHECK(client1.connect_to_node("127.0.0.1", client_port1).is_ok());
     CHECK_EQ(0, node0.get_kvs().get_size());
 
 
@@ -405,8 +405,8 @@ TEST_CASE("Test erase") {
     auto thread1 = std::thread(&Node::start, &node1);
     std::this_thread::sleep_for(100ms);
 
-    CHECK(client0.connect_to_node("127.0.0.1", client_port0));
-    CHECK(client1.connect_to_node("127.0.0.1", client_port1));
+    CHECK(client0.connect_to_node("127.0.0.1", client_port0).is_ok());
+    CHECK(client1.connect_to_node("127.0.0.1", client_port1).is_ok());
 
 
     SUBCASE("Erase not existing value") {
@@ -549,9 +549,9 @@ TEST_CASE("Test update slot info") {
     auto thread2 = std::thread(&Node::start, &node2);
     std::this_thread::sleep_for(100ms);
 
-    CHECK(client0.connect_to_node("127.0.0.1", client_port0));
-    CHECK(client1.connect_to_node("127.0.0.1", client_port1));
-    CHECK(client2.connect_to_node("127.0.0.1", client_port2));
+    CHECK(client0.connect_to_node("127.0.0.1", client_port0).is_ok());
+    CHECK(client1.connect_to_node("127.0.0.1", client_port1).is_ok());
+    CHECK(client2.connect_to_node("127.0.0.1", client_port2).is_ok());
 
     SUBCASE("Test no connection") {
         client0.disconnect_all();
@@ -623,8 +623,8 @@ TEST_CASE("Test migrate slot") {
     auto thread1 = std::thread(&Node::start, &node1);
     std::this_thread::sleep_for(100ms);
 
-    CHECK(client0.connect_to_node("127.0.0.1", client_port0));
-    CHECK(client1.connect_to_node("127.0.0.1", client_port1));
+    CHECK(client0.connect_to_node("127.0.0.1", client_port0).is_ok());
+    CHECK(client1.connect_to_node("127.0.0.1", client_port1).is_ok());
 
     SUBCASE("Other node not in cluster") {
         for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; i++) {
@@ -712,8 +712,8 @@ TEST_CASE("Test import slot") {
     auto thread1 = std::thread(&Node::start, &node1);
     std::this_thread::sleep_for(100ms);
 
-    CHECK(client0.connect_to_node("127.0.0.1", client_port0));
-    CHECK(client1.connect_to_node("127.0.0.1", client_port1));
+    CHECK(client0.connect_to_node("127.0.0.1", client_port0).is_ok());
+    CHECK(client1.connect_to_node("127.0.0.1", client_port1).is_ok());
 
     SUBCASE("Other node not in cluster") {
         for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; i++) {
@@ -800,7 +800,7 @@ TEST_CASE("Test add node") {
     auto thread1 = std::thread{ &Node::start, &node1 };
     std::this_thread::sleep_for(100ms);
 
-    CHECK(client0.connect_to_node("127.0.0.1", client_port0));
+    CHECK(client0.connect_to_node("127.0.0.1", client_port0).is_ok());
 
     SUBCASE("Normal") {
         auto status = client0.add_node_to_cluster("node1", "127.0.0.1", client_port1, cluster_port1);
