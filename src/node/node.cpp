@@ -41,6 +41,7 @@ namespace node {
             cluster_state_.slots[slot].amount_of_keys = 0;
             cluster_state_.slots[slot].migration_partner = nullptr;
             cluster_state_.slots[slot].state = cluster::SlotState::c_NORMAL;
+            cluster_state_.slots[slot].served_by = &cluster_state_.myself;
             cluster_state_.myself.served_slots[slot] = true;
         }
         cluster_state_.myself.num_slots_served = cluster::CLUSTER_AMOUNT_OF_SLOTS;

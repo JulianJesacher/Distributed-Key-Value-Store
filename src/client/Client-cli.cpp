@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "Client.hpp"
+#include "../node/Cluster.hpp"
 #include "../utils/ByteArray.hpp"
 #include "../utils/Status.hpp"
 
@@ -48,6 +49,12 @@ int main(int argc, char** argv) {
         }
         else if (command == "update_slot_info") {
             status = client.get_update_slot_info();
+            if (status.is_ok()) {
+                //Print slot info
+                for (uint16_t slot = 0; slot < node::cluster::CLUSTER_AMOUNT_OF_SLOTS; ++slot) {
+                    std::cout << "Slot " << slot << ": " << client.get_slot_nodes()[slot] << std::endl;
+                }
+            }
         }
         else if (command == "migrate_slot") {
             uint16_t slot = prompt<uint16_t>("Enter slot: ");
