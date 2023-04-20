@@ -1,79 +1,223 @@
 #include <iostream>
+#include <sstream>
+#include <variant>
 
 #include "Client.hpp"
 #include "../node/Cluster.hpp"
 #include "../utils/ByteArray.hpp"
 #include "../utils/Status.hpp"
 
-template<typename T = std::string>
-T prompt(const std::string& message) {
-    std::cout << message << std::flush;
-    T input;
-    std::cin >> input;
+using Client = client::Client;
+
+struct Command {};
+struct DisconnectCommand: public Command {};
+struct UpdateSlotInfoCommand: public Command {};
+struct UnknownCommand: public Command {};
+struct InvalidArgsCommand: public Command {};
+struct ConnectCommand: public Command {
+    std::string ip;
+    uint16_t client_port;
+};
+struct PutCommand: public Command {
+    std::string key;
+    std::string value;
+};
+struct GetCommand: public Command {
+    std::string key;
+    uint64_t size;
+    uint64_t offset;
+};
+struct EraseCommand: public Command {
+    std::string key;
+};
+struct MigrateSlotCommand: public Command {
+    uint16_t slot;
+    std::string ip;
+    uint16_t client_port;
+};
+struct ImportSlotCommand: public Command {
+    uint16_t slot;
+    std::string ip;
+    uint16_t client_port;
+};
+struct AddNodeToClusterCommand: public Command {
+    std::string name;
+    std::string ip;
+    uint16_t client_port;
+    uint16_t cluster_port;
+};
+
+using CommandVariant = std::variant<DisconnectCommand,
+    UpdateSlotInfoCommand,
+    UnknownCommand,
+    InvalidArgsCommand,
+    ConnectCommand,
+    PutCommand,
+    GetCommand,
+    EraseCommand,
+    MigrateSlotCommand,
+    ImportSlotCommand,
+    AddNodeToClusterCommand>;
+
+std::string prompt(const std::string& message) {
+    std::cout << message << std::fflush;
+    std::string input;
+    getline(std::cin, input);
     return input;
+}
+
+template<typename... Types>
+std::tuple<Types...> parse_input(std::istringstream& stream) {
+    return std::tuple<Types...>{parse_next<Types>(stream)...};
+}
+
+template<typename T>
+T parse_next(std::istringstream& stream) {
+    T value;
+    stream >> value;
+    if (stream.fail()) {
+        throw std::runtime_error("Invalid input");
+    }
+    return value;
+}
+
+class CommandVisitor {
+public:
+
+    CommandVisitor(observer_ptr<Client> client, observer_ptr<ByteArray> payload): client_{ client }, payload_{ payload } {}
+
+    Status operator() (const DisconnectCommand& command) {
+        client_->disconnect_all();
+        return Status::new_ok();
+    }
+
+    Status operator() (const UpdateSlotInfoCommand& command) {
+        return client_->get_update_slot_info();
+    }
+
+    Status operator() (const ConnectCommand& command) {
+        return client_->connect_to_node(command.ip, command.client_port);
+    }
+
+    Status operator() (const PutCommand& command) {
+        return client_->put_value(command.key, command.value);
+    }
+
+    Status operator() (const GetCommand& command) {
+        return client_->get_value(command.key, *payload_, command.size, command.offset);
+    }
+
+    Status operator() (const EraseCommand& command) {
+        return client_->erase_value(command.key);
+    }
+
+    Status operator() (const MigrateSlotCommand& command) {
+        return client_->migrate_slot(command.slot, command.ip, command.client_port);
+    }
+
+    Status operator() (const ImportSlotCommand& command) {
+        return client_->import_slot(command.slot, command.ip, command.client_port);
+    }
+
+    Status operator() (const AddNodeToClusterCommand& command) {
+        return client_->add_node_to_cluster(command.name, command.ip, command.client_port, command.cluster_port);
+    }
+
+    Status operator() (const InvalidArgsCommand& command) {
+        return Status::new_error("Invalid arguments");
+    }
+
+    Status operator() (const UnknownCommand& command) {
+        return Status::new_error("Unknown command. Type 'help' for a list of available commands.");
+    }
+
+    observer_ptr<Client> client_;
+    observer_ptr<ByteArray> payload_;
+};
+
+CommandVariant extract_arguments(const std::string& command, std::istringstream& stream) {
+    try {
+        if (command == "connect")
+        {
+            auto args = parse_input<std::string, uint16_t>(stream);
+            return ConnectCommand{ {}, std::get<0>(args), std::get<1>(args) };
+        }
+
+        else if (command == "put")
+        {
+            auto args = parse_input<std::string, std::string>(stream);
+            return PutCommand{ {}, std::get<0>(args), std::get<1>(args) };
+        }
+
+        else if (command == "get")
+        {
+            auto args = parse_input<std::string, uint64_t, uint64_t>(stream);
+            return GetCommand{ {}, std::get<0>(args), std::get<1>(args), std::get<2>(args) };
+        }
+
+        else if (command == "erase")
+        {
+            auto args = parse_input<std::string>(stream);
+            return EraseCommand{ {}, std::get<0>(args) };
+        }
+
+        else if (command == "migrate_slot")
+        {
+            auto args = parse_input<uint16_t, std::string, uint16_t>(stream);
+            return MigrateSlotCommand{ {}, std::get<0>(args), std::get<1>(args), std::get<2>(args) };
+        }
+
+        else if (command == "import_slot")
+        {
+            auto args = parse_input<uint16_t, std::string, uint16_t>(stream);
+            return ImportSlotCommand{ {}, std::get<0>(args), std::get<1>(args), std::get<2>(args) };
+        }
+
+        else if (command == "add_node_to_cluster")
+        {
+            auto args = parse_input<std::string, std::string, uint16_t, uint16_t>(stream);
+            return AddNodeToClusterCommand{ {}, std::get<0>(args), std::get<1>(args), std::get<2>(args), std::get<3>(args) };
+        }
+
+        else if (command == "disconnect")
+        {
+            return DisconnectCommand{};
+        }
+
+        else if (command == "update_slot_info")
+        {
+            return UpdateSlotInfoCommand{};
+        }
+
+        else {
+            return UnknownCommand{};
+        }
+    }
+    catch (std::runtime_error& e) {
+        return InvalidArgsCommand{};
+    }
+}
+
+Status execute_command(observer_ptr<Client> client, observer_ptr<ByteArray> payload, const std::string& command, std::istringstream& stream) {
+    CommandVariant command_variant = extract_arguments(command, stream);
+    CommandVisitor visitor{ client, payload };
+    return std::visit(visitor, command_variant);
 }
 
 int main(int argc, char** argv) {
     client::Client client{};
 
     while (true) {
-        std::string command = prompt("> ");
+        std::string read_line = prompt("> ");
+        std::istringstream stream{ read_line };
+        std::string command;
+        stream >> command;
+
         Status status = Status::new_ok();
         ByteArray payload{};
 
         if (command == "exit") {
             break;
-        }
-        else if (command == "connect") {
-            std::string ip = prompt("Enter ip: ");
-            uint16_t client_port = prompt<uint16_t>("Enter client port: ");
-            status = client.connect_to_node(ip, client_port);
-        }
-        else if (command == "disconnect") {
-            client.disconnect_all();
-        }
-        else if (command == "put") {
-            std::string key = prompt("Enter key: ");
-            std::string value = prompt("Enter value: ");
-            status = client.put_value(key, value);
-        }
-        else if (command == "get") {
-            std::string key = prompt("Enter key: ");
-            uint64_t size = prompt<uint64_t>("Enter size: ");
-            uint64_t offset = prompt<uint64_t>("Enter offset: ");
-            status = client.get_value(key, payload, offset, size);
-        }
-        else if (command == "erase") {
-            std::string key = prompt("Enter key: ");
-            status = client.erase_value(key);
-        }
-        else if (command == "update_slot_info") {
-            status = client.get_update_slot_info();
-            if (status.is_ok()) {
-                //Print slot info
-                for (uint16_t slot = 0; slot < node::cluster::CLUSTER_AMOUNT_OF_SLOTS; ++slot) {
-                    std::cout << "Slot " << slot << ": " << client.get_slot_nodes()[slot] << std::endl;
-                }
-            }
-        }
-        else if (command == "migrate_slot") {
-            uint16_t slot = prompt<uint16_t>("Enter slot: ");
-            std::string ip = prompt("Enter ip: ");
-            uint16_t client_port = prompt<uint16_t>("Enter client port: ");
-            status = client.migrate_slot(slot, ip, client_port);
-        }
-        else if (command == "import slot") {
-            uint16_t slot = prompt<uint16_t>("Enter slot: ");
-            std::string ip = prompt("Enter ip: ");
-            uint16_t client_port = prompt<uint16_t>("Enter client port: ");
-            status = client.import_slot(slot, ip, client_port);
-        }
-        else if (command == "add_node_to_cluster") {
-            std::string name = prompt("Enter name: ");
-            std::string ip = prompt("Enter ip: ");
-            uint16_t client_port = prompt<uint16_t>("Enter client port: ");
-            uint16_t cluster_port = prompt<uint16_t>("Enter cluster port: ");
-            status = client.add_node_to_cluster(name, ip, client_port, cluster_port);
         }
         else if (command == "help") {
             std::cout << "Available commands:" << std::endl;
@@ -90,7 +234,7 @@ int main(int argc, char** argv) {
             std::cout << "exit - exit the program" << std::endl;
         }
         else {
-            std::cout << "Unknown command. Type 'help' for a list of available commands." << std::endl;
+            status = execute_command(&client, &payload, command, stream);
         }
 
         if (!status.is_ok()) {
