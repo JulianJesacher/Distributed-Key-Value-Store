@@ -2,6 +2,7 @@
 
 #include "node.hpp"
 #include "InstructionHandler.hpp"
+#include "Cluster.hpp"
 #include "../KVS/IKeyValueStore.hpp"
 #include "../KVS/InMemoryKVS.hpp"
 #include "../net/Connection.hpp"
@@ -12,6 +13,10 @@ using command = node::protocol::Command;
 using Instruction = node::protocol::Instruction;
 
 namespace node {
+
+    Node::~Node() {
+        stop();
+    }
 
     Node::Node(
         std::unique_ptr<key_value_store::IKeyValueStore> kvs,
@@ -99,31 +104,41 @@ namespace node {
         }
     }
 
+    void Node::gossip() {
+        while (gossiping_) {
+            cluster::send_ping(cluster_state_);
+            std::this_thread::sleep_for(std::chrono::milliseconds(NODE_PING_PAUSE));
+        }
+    }
+
     void Node::execute_instruction(net::Connection& connection, const MetaData& meta_data, const command& command) {
         switch (meta_data.instruction) {
         case Instruction::c_PUT:
-            instruction_handler::handle_put(connection, meta_data, command, get_kvs(), get_cluster_state());
+            instruction_handler::handle_put(connection, meta_data, command, get_kvs(), cluster_state_);
             break;
         case Instruction::c_GET:
-            instruction_handler::handle_get(connection, command, get_kvs(), get_cluster_state());
+            instruction_handler::handle_get(connection, command, get_kvs(), cluster_state_);
             break;
         case Instruction::c_ERASE:
-            instruction_handler::handle_erase(connection, command, get_kvs(), get_cluster_state());
+            instruction_handler::handle_erase(connection, command, get_kvs(), cluster_state_);
             break;
         case Instruction::c_MEET:
-            instruction_handler::handle_meet(connection, command, get_cluster_state());
+            instruction_handler::handle_meet(connection, command, cluster_state_);
             break;
         case Instruction::c_MIGRATE_SLOT:
-            instruction_handler::handle_migrate_slot(connection, command, get_cluster_state());
+            instruction_handler::handle_migrate_slot(connection, command, cluster_state_);
             break;
         case Instruction::c_IMPORT_SLOT:
-            instruction_handler::handle_import_slot(connection, command, get_cluster_state());
+            instruction_handler::handle_import_slot(connection, command, cluster_state_);
             break;
         case Instruction::c_CLUSTER_MIGRATION_FINISHED:
-            instruction_handler::handle_migration_finished(command, get_cluster_state());
+            instruction_handler::handle_migration_finished(command, cluster_state_);
             break;
         case Instruction::c_GET_SLOTS:
-            instruction_handler::handle_get_slots(connection, command, get_cluster_state());
+            instruction_handler::handle_get_slots(connection, command, cluster_state_);
+            break;
+        case Instruction::c_CLUSTER_PING:
+            cluster::handle_ping(connection, cluster_state_, meta_data.payload_size);
             break;
         default:
             protocol::send_instruction(connection, Status::new_not_supported("Unknown instruction"));

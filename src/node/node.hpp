@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <atomic>
 #include <string>
+#include <thread>
 
 #include "../KVS/IKeyValueStore.hpp"
 #include "../KVS/InMemoryKVS.hpp"
@@ -13,9 +14,12 @@
 namespace node {
 
     constexpr int NODE_WAIT_TIMEOUT = 1000;
+    constexpr int NODE_PING_PAUSE = 1000;
 
     class Node {
     public:
+
+        ~Node();
 
         //Disable copying and moving
         Node(const Node&) = delete;
@@ -39,11 +43,17 @@ namespace node {
 
         void start() {
             running_ = true;
+            gossiping_ = true;
             main_loop();
+            gossip_thread_ = std::thread(&Node::gossip, this);
         }
 
         void stop() {
             running_ = false;
+            gossiping_ = false;
+            if (gossip_thread_.joinable()) {
+                gossip_thread_.join(); //TODO: Detach or join?
+            }
         }
 
         net::Epoll& get_connections_epoll() {
@@ -63,6 +73,8 @@ namespace node {
 
         void main_loop();
 
+        void gossip();
+
         void disconnect(net::Connection& connection);
 
         std::unique_ptr<key_value_store::IKeyValueStore> kvs_;
@@ -73,6 +85,8 @@ namespace node {
         uint16_t client_port_;
         uint16_t cluster_port_;
         std::atomic<bool> running_;
+        std::atomic<bool> gossiping_;
+        std::thread gossip_thread_;
         std::array<char, cluster::CLUSTER_NAME_LEN> name_;
         std::array<char, cluster::CLUSTER_IP_LEN> ip_;
     };

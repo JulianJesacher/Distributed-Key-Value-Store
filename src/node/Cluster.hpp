@@ -57,7 +57,8 @@ namespace node::cluster {
         std::vector<ClusterNodeGossipData> data;
     };
 
-    void send_ping(net::Connection& link, ClusterState& state);
+    void send_ping(observer_ptr<net::Connection> link, ClusterState& state);
+    void send_ping(ClusterState& state);
 
     void handle_ping(net::Connection& link, ClusterState& state, uint64_t payload_size);
 

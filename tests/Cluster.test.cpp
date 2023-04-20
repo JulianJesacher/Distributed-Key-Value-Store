@@ -63,7 +63,7 @@ TEST_CASE("Test Gossip Ping") {
     auto send_ping = [&]() {
         net::Socket sender_socket{};
         net::Connection connection = sender_socket.connect(cluster_port);
-        node::cluster::send_ping(connection, state_sender);
+        node::cluster::send_ping(&connection, state_sender);
     };
 
     auto handle_ping = [&]() {

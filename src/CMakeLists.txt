@@ -97,6 +97,7 @@ target_include_directories(Client_l PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # Node executable
 add_executable(Node node/main.cpp)
 target_link_libraries(Node Node_l)
+target_link_libraries(Node pthread)
 
 #Client-cli executable
 add_executable(Client-cli client/Client-cli.cpp)

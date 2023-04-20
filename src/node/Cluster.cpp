@@ -27,7 +27,18 @@ namespace node::cluster {
         return std::move(converted_node);
     }
 
-    void send_ping(net::Connection& link, ClusterState& state) {
+    void send_ping(ClusterState& state) {
+        std::mt19937 random_engine(std::random_device{}());
+        std::uniform_int_distribution<uint16_t> dist(0, state.size - 1); //Important: [a, b] both borders inclusive
+        uint16_t random_index = dist(random_engine);
+        ClusterNode& rand_node = std::next(state.nodes.begin(), random_index)->second;
+
+        if (rand_node.outgoing_link.fd() != -1) {
+            send_ping(&rand_node.outgoing_link, state);
+        }
+    }
+
+    void send_ping(observer_ptr<net::Connection> link, ClusterState& state) {
         auto required_nodes = static_cast<uint16_t>(ceil(state.size / 10.0));
         ClusterGossipMsg msg;
 
@@ -42,7 +53,7 @@ namespace node::cluster {
             msg.data.emplace_back(converted_node);
         }
 
-        protocol::send_instruction(link,
+        protocol::send_instruction(*link,
             protocol::Command{},
             protocol::Instruction::c_CLUSTER_PING,
             reinterpret_cast<char*>(msg.data.data()),
