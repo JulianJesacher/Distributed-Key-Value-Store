@@ -61,6 +61,13 @@ int main(int argc, char** argv) {
             uint16_t client_port = prompt<uint16_t>("Enter client port: ");
             status = client.import_slot(slot, ip, client_port);
         }
+        else if (command == "add_node_to_cluster") {
+            std::string name = prompt("Enter name: ");
+            std::string ip = prompt("Enter ip: ");
+            uint16_t client_port = prompt<uint16_t>("Enter client port: ");
+            uint16_t cluster_port = prompt<uint16_t>("Enter cluster port: ");
+            status = client.add_node_to_cluster(name, ip, client_port, cluster_port);
+        }
         else if (command == "help") {
             std::cout << "Available commands:" << std::endl;
             std::cout << "connect <ip> - connect to a server" << std::endl;
@@ -71,6 +78,7 @@ int main(int argc, char** argv) {
             std::cout << "update_slot_info - update the slot info from the cluster for faster requests" << std::endl;
             std::cout << "migrate_slot <slot> <other_ip> <other_client_port> - migrate a slot to another node" << std::endl;
             std::cout << "import_slot <slot> <other_ip> <other_client_port> - import a slot from another node" << std::endl;
+            std::cout << "add_node_to_cluster <name> <ip> <client_port> <cluster_port> - add a node to the cluster" << std::endl;
             std::cout << "help - show this help" << std::endl;
             std::cout << "exit - exit the program" << std::endl;
         }
