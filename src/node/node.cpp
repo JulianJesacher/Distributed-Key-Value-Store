@@ -91,7 +91,7 @@ namespace node {
                 int fd = connections_epoll_.get_event_fd(i);
 
                 //New connection
-                if (fd == client_socket.fd() || fd == cluster_socket.fd()) {
+                if (fd == client_socket.fd() || fd == cluster_socket.fd() && !fd_to_connection_.contains(fd)) {
                     try {
                         net::Connection connection = client_socket.accept();
                         connections_epoll_.add_event(connection.fd(), EPOLLIN | EPOLLET);

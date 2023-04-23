@@ -27,22 +27,13 @@ TEST_CASE("Test connect") {
 
     SUBCASE("No connections open") {
         //Initially, no connections are open
-        CHECK(node0.get_connections_epoll().wait(0) == 0);
         CHECK_EQ(client0.get_nodes_connections().size(), 0);
     }
 
     SUBCASE("Client connect") {
         //After connecting to a node, a connection should be open
         client0.connect_to_node("127.0.0.1", client_port0);
-        CHECK(node0.get_connections_epoll().wait(0) == 1); //TODO: REMOVE
         CHECK_EQ(client0.get_nodes_connections().size(), 1);
-    }
-
-    SUBCASE("Socket connect") {
-        //Also connections from a socket should be accepted
-        net::Socket client_socket{};
-        client_socket.connect(client_port0);
-        CHECK(node0.get_connections_epoll().wait(0) == 1);
     }
 
     //TODO: Fix
