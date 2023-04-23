@@ -27,7 +27,7 @@ namespace node {
         Node(Node&&) = delete;
         Node& operator=(Node&&) = delete;
 
-        static Node new_in_memory_node(std::string name, uint16_t client_port, uint16_t cluster_port, std::string ip);
+        static Node new_in_memory_node(std::string name, uint16_t client_port, uint16_t cluster_port, std::string ip, bool serve_all_slots = false);
 
         key_value_store::IKeyValueStore& get_kvs() const {
             return *kvs_;
@@ -69,7 +69,8 @@ namespace node {
             uint16_t client_port,
             uint16_t cluster_port,
             std::array<char, cluster::CLUSTER_NAME_LEN> name,
-            std::array<char, cluster::CLUSTER_IP_LEN> ip);
+            std::array<char, cluster::CLUSTER_IP_LEN> ip,
+            bool serve_all_slots = false);
 
         void main_loop();
 

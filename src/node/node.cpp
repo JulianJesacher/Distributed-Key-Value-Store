@@ -23,7 +23,8 @@ namespace node {
         uint16_t client_port,
         uint16_t cluster_port,
         std::array<char, cluster::CLUSTER_NAME_LEN> name,
-        std::array<char, cluster::CLUSTER_IP_LEN> ip
+        std::array<char, cluster::CLUSTER_IP_LEN> ip,
+        bool serve_all_slots
     ) {
         kvs_ = std::move(kvs);
         client_port_ = client_port;
@@ -37,6 +38,11 @@ namespace node {
         cluster_state_.myself.name = name;
         cluster_state_.myself.ip = ip;
 
+        if (!serve_all_slots) {
+            return;
+        }
+
+        //Only start serving slots if specified, used for the first node of the cluster
         for (int slot = 0; slot < cluster::CLUSTER_AMOUNT_OF_SLOTS; slot++) {
             cluster_state_.slots[slot].amount_of_keys = 0;
             cluster_state_.slots[slot].migration_partner = nullptr;
@@ -47,7 +53,7 @@ namespace node {
         cluster_state_.myself.num_slots_served = cluster::CLUSTER_AMOUNT_OF_SLOTS;
     }
 
-    Node Node::new_in_memory_node(std::string name, uint16_t client_port, uint16_t cluster_port, std::string ip) {
+    Node Node::new_in_memory_node(std::string name, uint16_t client_port, uint16_t cluster_port, std::string ip, bool serve_all_slots) {
         assert(name.size() <= cluster::CLUSTER_NAME_LEN); //TODO: Check nullterminal
         assert(ip.size() <= cluster::CLUSTER_IP_LEN); //TODO: Check nullterminal
 
