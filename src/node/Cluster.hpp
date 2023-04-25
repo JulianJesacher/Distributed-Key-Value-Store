@@ -7,6 +7,12 @@
 #include "../net/Connection.hpp"
 #include "../utils/Status.hpp"
 
+//This is required to avoid circular import
+namespace node::protocol {
+    using Command = std::vector<std::string>;
+}
+
+
 template<typename T>
 using observer_ptr = T*;
 
@@ -32,7 +38,7 @@ namespace node::cluster {
         net::Connection outgoing_link;
     };
 
-    enum class SlotState {
+    enum class SlotState: uint8_t {
         c_NORMAL = 0,
         c_MIGRATING = 1,
         c_IMPORTING = 2,
@@ -46,6 +52,14 @@ namespace node::cluster {
         observer_ptr<ClusterNode> migration_partner = nullptr;
     };
 
+    struct SlotGossipData {
+        uint16_t slot_number;
+        uint64_t amount_of_keys;
+        SlotState state;
+        std::array<char, CLUSTER_NAME_LEN> migration_partner_name;
+        std::array<char, CLUSTER_NAME_LEN> served_by_name;
+    };
+
     struct ClusterState {
         std::unordered_map<std::string, ClusterNode> nodes;
         uint16_t size;
@@ -54,13 +68,14 @@ namespace node::cluster {
     };
 
     struct ClusterGossipMsg {
-        std::vector<ClusterNodeGossipData> data;
+        std::vector<ClusterNodeGossipData> nodes;
+        std::vector<SlotGossipData> slots;
     };
 
     void send_ping(observer_ptr<net::Connection> link, ClusterState& state);
     void send_ping(ClusterState& state);
 
-    void handle_ping(net::Connection& link, ClusterState& state, uint64_t payload_size);
+    void handle_ping(net::Connection& link, ClusterState& state, const protocol::Command& comand);
 
     Status add_node(ClusterState& state, const std::string& name, const std::string& ip, uint16_t cluster_port, uint16_t client_port);
 
