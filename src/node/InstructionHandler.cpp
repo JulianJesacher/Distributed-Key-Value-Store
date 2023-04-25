@@ -1,7 +1,6 @@
 #include <cstring>
 
 #include "InstructionHandler.hpp"
-#include "ProtocolHandler.hpp"
 #include "Cluster.hpp"
 
 using PutFields = node::protocol::CommandFieldsPut;

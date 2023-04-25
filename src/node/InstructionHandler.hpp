@@ -1,3 +1,5 @@
+#pragma once
+
 #include "ProtocolHandler.hpp"
 #include "../KVS/IKeyValueStore.hpp"
 #include "../utils/Status.hpp"
