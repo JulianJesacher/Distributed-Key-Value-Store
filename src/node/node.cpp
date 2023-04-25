@@ -145,7 +145,7 @@ namespace node {
             instruction_handler::handle_get_slots(connection, command, cluster_state_);
             break;
         case Instruction::c_CLUSTER_PING:
-            cluster::handle_ping(connection, cluster_state_, meta_data.payload_size);
+            cluster::handle_ping(connection, cluster_state_, command);
             break;
         default:
             protocol::send_instruction(connection, Status::new_not_supported("Unknown instruction"));

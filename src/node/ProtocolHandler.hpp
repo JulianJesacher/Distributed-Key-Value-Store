@@ -107,6 +107,12 @@ namespace node {
             enum_size = 1
         };
 
+        enum class CommandFieldsPing {
+            c_NODES_AMOUNT = 0,
+            c_SLOTS_AMOUNT = 1,
+            enum_size = 2
+        };
+
         using CommandFieldsAsk = CommandFieldsMove;
 
         using Command = std::vector<std::string>;

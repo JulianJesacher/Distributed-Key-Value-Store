@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string.h>
 #include <algorithm>
+#include <endian.h>
 
 #include "Cluster.hpp"
 #include "ProtocolHandler.hpp"
@@ -27,6 +28,40 @@ namespace node::cluster {
         return std::move(converted_node);
     }
 
+    SlotGossipData get_slot_data(Slot& slot, uint16_t slot_number) {
+        SlotGossipData slot_data;
+        slot_data.amount_of_keys = slot.amount_of_keys;
+        slot_data.slot_number = slot_number;
+        slot_data.state = slot.state;
+
+        if (slot.migration_partner != nullptr) {
+            slot_data.migration_partner_name = slot.migration_partner->name;
+        }
+        else {
+            slot_data.migration_partner_name.fill(0);
+        }
+
+        if (slot.served_by != nullptr) {
+            slot_data.served_by_name = slot.served_by->name;
+        }
+        else {
+            slot_data.served_by_name.fill(0);
+        }
+
+        return slot_data;
+    }
+
+    void convert_slot_to_network_order(SlotGossipData& slot) {
+        slot.amount_of_keys = htobe64(slot.amount_of_keys);
+        slot.slot_number = htobe16(slot.slot_number);
+        //TODO: Status?
+    }
+
+    void convert_slot_to_host_order(SlotGossipData& slot) {
+        slot.amount_of_keys = be64toh(slot.amount_of_keys);
+        slot.slot_number = be16toh(slot.slot_number);
+    }
+
     void send_ping(ClusterState& state) {
         std::mt19937 random_engine(std::random_device{}());
         std::uniform_int_distribution<uint16_t> dist(0, state.size - 1); //Important: [a, b] both borders inclusive
@@ -44,20 +79,33 @@ namespace node::cluster {
 
         std::mt19937 random_engine(std::random_device{}());
         std::uniform_int_distribution<uint16_t> dist(0, state.size - 1); //Important: [a, b] both borders inclusive
-        msg.data.emplace_back(convert_node_to_network_order(state.myself));
+        msg.nodes.emplace_back(convert_node_to_network_order(state.myself));
 
         for (int i = 0; i < required_nodes; i++) {
             uint16_t random_index = dist(random_engine);
             ClusterNode& rand_node = std::next(state.nodes.begin(), random_index)->second;
             ClusterNodeGossipData converted_node = convert_node_to_network_order(rand_node);
-            msg.data.emplace_back(converted_node);
+            msg.nodes.emplace_back(converted_node);
         }
 
+        for (uint16_t slot_number = 0; slot_number < CLUSTER_AMOUNT_OF_SLOTS; slot_number++) {
+            SlotGossipData slot_data = get_slot_data(state.slots[slot_number], slot_number);
+            convert_slot_to_network_order(slot_data);
+            msg.slots.emplace_back(std::move(slot_data));
+        }
+
+        uint64_t nodes_size_bytes = (required_nodes + 1) * sizeof(ClusterNodeGossipData); //+1 for myself
+        uint64_t slots_size_bytes = CLUSTER_AMOUNT_OF_SLOTS * sizeof(SlotGossipData);
+        uint64_t total_size_bytes = nodes_size_bytes + slots_size_bytes;
+
         protocol::send_instruction(*link,
-            protocol::Command{},
+            protocol::Command{ std::to_string(1 + required_nodes), std::to_string(CLUSTER_AMOUNT_OF_SLOTS) },
             protocol::Instruction::c_CLUSTER_PING,
-            reinterpret_cast<char*>(msg.data.data()),
-            (required_nodes + 1) * sizeof(ClusterNodeGossipData));
+            reinterpret_cast<char*>(msg.nodes.data()),
+            nodes_size_bytes
+        );
+        link->send(reinterpret_cast<char*>(msg.slots.data()), slots_size_bytes);
+        //TODO: Clean up
     }
 
     void update_node(const std::string& name, ClusterState& state, const ClusterNodeGossipData& node) {
@@ -86,15 +134,40 @@ namespace node::cluster {
     }
 
 
-    void handle_ping(net::Connection& link, ClusterState& state, uint64_t payload_size) {
-        auto sent_nodes = static_cast<uint16_t>(payload_size / sizeof(ClusterNodeGossipData));
+    void handle_ping(net::Connection& link, ClusterState& state, const protocol::Command& comand) {
+        uint16_t sent_nodes = std::stoi(comand[to_integral(protocol::CommandFieldsPing::c_NODES_AMOUNT)]);
+        uint16_t sent_slots = std::stoi(comand[to_integral(protocol::CommandFieldsPing::c_SLOTS_AMOUNT)]);
 
         for (int i = 0; i < sent_nodes; i++) {
             ClusterNodeGossipData cur;
             protocol::get_payload(link, reinterpret_cast<char*>(&cur), sizeof(ClusterNodeGossipData));
             std::string name(cur.name.begin());
             update_node(name, state, convert_node_to_host_order(cur));
-            update_served_slots_by_node(state, state.nodes[name]);
+            update_served_slots_by_node(state, state.nodes[name]); //TODO: Remove
+        }
+
+        for (uint16_t slot_number = 0; slot_number < sent_slots; slot_number++) {
+            SlotGossipData slot_data;
+            protocol::get_payload(link, reinterpret_cast<char*>(&slot_data), sizeof(SlotGossipData));
+            convert_slot_to_host_order(slot_data);
+            state.slots[slot_number].amount_of_keys = slot_data.amount_of_keys;
+            state.slots[slot_number].state = slot_data.state;
+
+            std::string served_by_name{ slot_data.served_by_name.data() };
+            if (served_by_name.size() != 0 && state.nodes.contains(served_by_name)) {
+                state.slots[slot_number].served_by = &state.nodes[served_by_name];
+            }
+            else {
+                state.slots[slot_number].served_by = nullptr;
+            }
+
+            std::string migration_parner_name{ slot_data.migration_partner_name.data() };
+            if (migration_parner_name.size() != 0 && state.nodes.contains(migration_parner_name)) {
+                state.slots[slot_number].migration_partner = &state.nodes[migration_parner_name];
+            }
+            else {
+                state.slots[slot_number].migration_partner = nullptr;
+            }
         }
 
         state.size = state.nodes.size();
@@ -160,7 +233,7 @@ namespace node::cluster {
             ClusterNode& serving_node = *state.slots[slot].served_by;
             protocol::send_instruction(
                 connection,
-                protocol::Command{std::string(serving_node.ip.data()), std::to_string(serving_node.client_port)},
+                protocol::Command{ std::string(serving_node.ip.data()), std::to_string(serving_node.client_port) },
                 protocol::Instruction::c_MOVE
             );
         }
