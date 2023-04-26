@@ -118,6 +118,7 @@ TEST_CASE("Test Gossip Ping") {
         node::cluster::handle_ping(connection, state_receiver, command);
     };
 
+
     SUBCASE("Insert new") {
         CHECK_EQ(state_receiver.nodes.size(), 0);
 
@@ -133,33 +134,32 @@ TEST_CASE("Test Gossip Ping") {
         compare_clusterNodes(state_receiver.nodes["sender"], sender);
         compare_slots(state_receiver.slots, state_sender.slots);
     }
-    /*
-        SUBCASE("Overwrite existing") {
-            state_receiver.nodes["node1"] = node1;
-            node1.num_slots_served = 100;
-            node1.served_slots[0] = true;
-            node1.num_slots_served = node1.served_slots.count();
-            state_receiver.nodes["sender"] = sender;
 
-            state_sender.nodes["node1"] = node1;
-            CHECK_EQ(state_receiver.nodes.size(), 2);
+    SUBCASE("Overwrite existing") {
+        state_receiver.nodes["node1"] = node1;
+        node1.num_slots_served = 100;
+        node1.served_slots[0] = true;
+        node1.num_slots_served = node1.served_slots.count();
+        state_receiver.nodes["sender"] = sender;
 
-            auto received = std::async(handle_ping);
-            std::this_thread::sleep_for(100ms);
-            auto sent = std::async(send_ping);
+        state_sender.nodes["node1"] = node1;
+        CHECK_EQ(state_receiver.nodes.size(), 2);
 
-            sent.get();
-            received.get();
+        auto received = std::async(handle_ping);
+        std::this_thread::sleep_for(100ms);
+        auto sent = std::async(send_ping);
 
-            CHECK_EQ(state_receiver.nodes.size(), 2);
-            compare_clusterNodes(state_receiver.nodes["node1"], node1);
-            compare_clusterNodes(state_receiver.nodes["node1"], *state_receiver.slots[0].served_by);
-            compare_clusterNodes(state_receiver.nodes["sender"], sender);
-        }
-        */
+        sent.get();
+        received.get();
+
+        CHECK_EQ(state_receiver.nodes.size(), 2);
+        compare_clusterNodes(state_receiver.nodes["node1"], node1);
+        compare_clusterNodes(state_receiver.nodes["node1"], *state_receiver.slots[0].served_by);
+        compare_clusterNodes(state_receiver.nodes["sender"], sender);
+    }
 }
 
-/*
+
 TEST_CASE("Hashing") {
     auto expected = static_cast<uint16_t>(std::hash<std::string>{}("test"));
     auto actual = node::cluster::get_key_hash("test");
@@ -636,4 +636,3 @@ TEST_CASE("Test get slots") {
     std::string expected_payload = "0\t0\tNULL\n1\t1\t127.0.0.1:3001\n2\t2\t127.0.0.1:3002\n3\t3\t127.0.0.100:3003\n4\t4\tNULL";
     CHECK_EQ(actual_payload.to_string(), expected_payload);
 }
-*/
