@@ -1,0 +1,4 @@
+name=node
+client_port=5000
+cluster_port=15000
+serve_all_slots=false
