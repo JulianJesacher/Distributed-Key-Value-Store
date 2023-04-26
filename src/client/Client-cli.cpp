@@ -60,7 +60,7 @@ using CommandVariant = std::variant<DisconnectCommand,
     AddNodeToClusterCommand>;
 
 std::string prompt(const std::string& message) {
-    std::cout << message << std::fflush;
+    std::cout << message << std::flush;
     std::string input;
     getline(std::cin, input);
     return input;

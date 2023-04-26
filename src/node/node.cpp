@@ -63,7 +63,7 @@ namespace node {
         std::array<char, cluster::CLUSTER_IP_LEN> ip_arr{};
         std::copy(ip.begin(), ip.end(), ip_arr.begin());
 
-        return Node{ std::make_unique<key_value_store::InMemoryKVS>(), client_port, cluster_port, name_arr, ip_arr };
+        return Node{ std::make_unique<key_value_store::InMemoryKVS>(), client_port, cluster_port, name_arr, ip_arr, serve_all_slots };
     }
 
     void Node::main_loop() {
