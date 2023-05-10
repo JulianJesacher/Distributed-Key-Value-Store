@@ -1,6 +1,6 @@
 #include <cassert>
 
-#include "node.hpp"
+#include "Node.hpp"
 #include "InstructionHandler.hpp"
 #include "Cluster.hpp"
 #include "../KVS/IKeyValueStore.hpp"

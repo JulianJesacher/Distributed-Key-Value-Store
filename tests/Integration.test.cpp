@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "node/node.hpp"
+#include "node/Node.hpp"
 #include "client/Client.hpp"
 #include "node/InstructionHandler.hpp"
 #include "node/Cluster.hpp"

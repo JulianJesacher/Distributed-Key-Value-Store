@@ -5,7 +5,7 @@
 #include <sys/epoll.h>
 
 #include "client/Client.hpp"
-#include "node/node.hpp"
+#include "node/Node.hpp"
 #include "net/Socket.hpp"
 #include "net/Connection.hpp"
 

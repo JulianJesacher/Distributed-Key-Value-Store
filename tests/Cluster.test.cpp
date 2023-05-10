@@ -12,7 +12,7 @@
 #include "node/Cluster.cpp"
 #include "net/Socket.hpp"
 #include "node/ProtocolHandler.hpp"
-#include "node/node.hpp"
+#include "node/Node.hpp"
 #include "net/Epoll.hpp"
 
 using namespace std::chrono_literals; // NOLINT

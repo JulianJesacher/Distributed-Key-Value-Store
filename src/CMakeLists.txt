@@ -55,8 +55,8 @@ add_library(Node_l
     KVS/InMemoryKVS.cpp
     utils/Status.hpp
     utils/Status.cpp
-    node/node.hpp
-    node/node.cpp
+    node/Node.hpp
+    node/Node.cpp
     net/Epoll.hpp
     net/Epoll.cpp
 )
@@ -87,8 +87,8 @@ add_library(Client_l
     KVS/InMemoryKVS.cpp
     utils/Status.hpp
     utils/Status.cpp
-    node/node.hpp
-    node/node.cpp
+    node/Node.hpp
+    node/Node.cpp
     net/Epoll.hpp
     net/Epoll.cpp
 )
