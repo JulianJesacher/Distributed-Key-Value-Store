@@ -37,6 +37,7 @@ namespace node {
         cluster_state_.myself.cluster_port = cluster_port;
         cluster_state_.myself.name = name;
         cluster_state_.myself.ip = ip;
+        cluster_state_.size = 0;
 
         if (!serve_all_slots) {
             return;
@@ -51,6 +52,7 @@ namespace node {
             cluster_state_.myself.served_slots[slot] = true;
         }
         cluster_state_.myself.num_slots_served = cluster::CLUSTER_AMOUNT_OF_SLOTS;
+        cluster_state_.part_of_cluster = true;
     }
 
     Node Node::new_in_memory_node(std::string name, uint16_t client_port, uint16_t cluster_port, std::string ip, bool serve_all_slots) {
@@ -92,8 +94,9 @@ namespace node {
 
                 //New connection
                 if (fd == client_socket.fd() || fd == cluster_socket.fd() && !fd_to_connection_.contains(fd)) {
+                    net::Socket& receiving_socket = fd == client_socket.fd() ? client_socket : cluster_socket;
                     try {
-                        net::Connection connection = client_socket.accept();
+                        net::Connection connection = receiving_socket.accept();
                         connections_epoll_.add_event(connection.fd(), EPOLLIN | EPOLLET);
                         fd_to_connection_[connection.fd()] = connection;
                     }
@@ -105,6 +108,7 @@ namespace node {
                 //Existing connection
                 else if (connections_epoll_.get_events()[i].events & EPOLLIN) {
                     net::Connection& connection = fd_to_connection_[fd];
+                    //std::unique_lock lock{cluster_state_mutex_};
                     handle_connection(connection);
                 }
             }
@@ -113,7 +117,9 @@ namespace node {
 
     void Node::gossip() {
         while (gossiping_) {
-            cluster::send_ping(cluster_state_);
+            if (cluster_state_.part_of_cluster) {
+                cluster::send_ping(cluster_state_);
+            }
             std::this_thread::sleep_for(std::chrono::milliseconds(NODE_PING_PAUSE));
         }
     }
@@ -163,7 +169,7 @@ namespace node {
 
     void Node::handle_connection(net::Connection& connection) {
         try {
-            MetaData meta_data = node::protocol::get_metadata(connection);
+            MetaData meta_data = node::protocol::get_metadata(connection, std::string(cluster_state_.myself.name.data()));
             command command = node::protocol::get_command(connection, meta_data.argc, meta_data.command_size);
             execute_instruction(connection, meta_data, command);
         }

@@ -91,7 +91,7 @@ namespace node::instruction_handler {
             ByteArray payload = ByteArray::new_allocated_byte_array(total_payload_size);
             protocol::get_payload(connection, payload.data(), cur_payload_size);
 
-            Status state = kvs.put(key, payload);
+            Status state = kvs.put(key, payload); //TODO: maybe change
             protocol::send_instruction(connection, state);
             cluster_state.slots[slot].amount_of_keys += 1;
             return;
@@ -99,6 +99,8 @@ namespace node::instruction_handler {
         //key doesn't exist and slot is migrating
         else if (cluster_state.slots[slot].state == cluster::SlotState::c_MIGRATING) {
             send_ask_response(connection, slot, cluster_state);
+            //The payload needs to be received to clear the connection buffer
+            protocol::get_payload(connection, cur_payload_size);
             return;
         }
 
@@ -166,6 +168,7 @@ namespace node::instruction_handler {
 
     void handle_erase(net::Connection& connection, const protocol::Command& command,
         key_value_store::IKeyValueStore& kvs, cluster::ClusterState& cluster_state) {
+  
         Status argc_state = check_argc(command, Instruction::c_ERASE);
         if (!argc_state.is_ok()) {
             protocol::send_instruction(connection, argc_state);
@@ -179,9 +182,10 @@ namespace node::instruction_handler {
         }
 
         Status state = kvs.erase(key);
+        bool asking = command[to_integral(EraseFields::c_ASKING)] == "true";
 
-        //Slot migrating and key not found -> respond with ask
-        if (state.is_not_found() && cluster_state.slots[slot].state == cluster::SlotState::c_MIGRATING) {
+        //Slot migrating and key not found -> respond with ask if not already asked, otherwise loop
+        if (!asking && state.is_not_found() && cluster_state.slots[slot].state == cluster::SlotState::c_MIGRATING) {
             send_ask_response(connection, slot, cluster_state);
             return;
         }
@@ -193,6 +197,7 @@ namespace node::instruction_handler {
             if (cluster_state.slots[slot].amount_of_keys == 0 && cluster_state.slots[slot].state == cluster::SlotState::c_MIGRATING) {
                 cluster::ClusterNode migration_partner = *cluster_state.slots[slot].migration_partner;
 
+                cluster_state.slots[slot].served_by = cluster_state.slots[slot].migration_partner;
                 cluster_state.slots[slot].state = cluster::SlotState::c_NORMAL;
                 cluster_state.slots[slot].migration_partner = nullptr;
                 cluster_state.myself.served_slots[slot] = false;
@@ -232,7 +237,7 @@ namespace node::instruction_handler {
         auto partner = std::find_if(cluster_state.nodes.begin(), cluster_state.nodes.end(),
             [&ip, &port](const auto& iterator) {
                 const cluster::ClusterNode& node = iterator.second;
-                return memcmp(node.ip.data(), ip.data(), ip.size()) == 0 && node.client_port == port;
+                return memcmp(node.ip.data(), ip.data(), ip.size()) == 0 && node.client_port == port; //TODO: String compare
             });
 
         //Node not in cluster
@@ -307,6 +312,9 @@ namespace node::instruction_handler {
         uint16_t slot = std::stoul(command[to_integral(MigrationFinishedFields::c_SLOT)]);
         cluster_state.slots[slot].state = cluster::SlotState::c_NORMAL;
         cluster_state.slots[slot].migration_partner = nullptr;
+        cluster_state.slots[slot].served_by = &cluster_state.myself;
+        cluster_state.myself.served_slots[slot] = true;
+        cluster_state.myself.num_slots_served = cluster_state.myself.served_slots.count();
     }
 
     void handle_get_slots(net::Connection& connection, const protocol::Command& command, cluster::ClusterState& cluster_state) {

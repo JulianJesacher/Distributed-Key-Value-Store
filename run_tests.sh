@@ -1,6 +1,7 @@
 cd build
 cmake ..
 make
+clear
 
 echo "Running byteArrayTest"
 ./tests/byteArrayTest
@@ -22,3 +23,6 @@ echo "Running protocolHandlerTest"
 
 echo "Running clientTest"
 ./tests/clientTest
+
+echo "Running integrationTest"
+./tests/integrationTest

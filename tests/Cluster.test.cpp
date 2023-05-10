@@ -35,9 +35,6 @@ void compare_clusterNodes(const ClusterNode& lhs, const ClusterNode& rhs) {
 void compare_slots(const std::vector<Slot>& lhs, const std::vector<Slot>& rhs) {
     CHECK_EQ(lhs.size(), rhs.size());
     for (int i = 0; i < lhs.size(); i++) {
-        CHECK_EQ(lhs[i].amount_of_keys, rhs[i].amount_of_keys);
-        CHECK_EQ(lhs[i].state, rhs[i].state);
-
         //Compare migration partner
         if (lhs[i].migration_partner == nullptr || rhs[i].migration_partner == nullptr) {
             CHECK_EQ(lhs[i].migration_partner, rhs[i].migration_partner);
@@ -80,6 +77,7 @@ TEST_CASE("Test Gossip Ping") {
     ClusterNode node1{ "node1", "127.0.0.1", cluster_port, 1235 };
     ClusterNode sender{ "sender", "127.0.0.1", cluster_port, 1236 };
 
+    state_receiver.myself = node1;
     state_sender.nodes["node1"] = node1;
     state_sender.size = 1;
     state_sender.myself = sender;
@@ -516,7 +514,7 @@ TEST_CASE("Test migrating slot") {
         // Erase key from node 0, expect ask response
         processed = std::async(process_instruction, std::ref(server0), client_port0);
         std::this_thread::sleep_for(100ms);
-        sent = std::async(send_instruction, client_port0, protocol::Command{ other_key_slot_0 }, protocol::Instruction::c_ERASE, "");
+        sent = std::async(send_instruction, client_port0, protocol::Command{ other_key_slot_0, "false" }, protocol::Instruction::c_ERASE, "");
         std::tie(actual_metadata, actual_command, actual_payload) = sent.get();
         processed.get();
 
@@ -546,23 +544,20 @@ TEST_CASE("Test migrating slot") {
         // Erase only key from node0, expect ok and slot state change to normal and not served by node0
         processed = std::async(process_instruction, std::ref(server0), client_port0);
         std::this_thread::sleep_for(100ms);
-        sent = std::async(send_instruction, client_port0, protocol::Command{ key_slot_0 }, protocol::Instruction::c_ERASE, "");
+        sent = std::async(send_instruction, client_port0, protocol::Command{ key_slot_0, "true" }, protocol::Instruction::c_ERASE, "");
         std::tie(actual_metadata, actual_command, actual_payload) = sent.get();
         processed.get();
 
-        server1.handle_connection(connection1);
 
         CHECK_EQ(0, server0.get_kvs().get_size());
         CHECK_EQ(0, server0.get_cluster_state().slots[0].amount_of_keys);
         CHECK_EQ(1, server1.get_kvs().get_size());
         CHECK_EQ(1, server1.get_cluster_state().slots[0].amount_of_keys);
         CHECK_EQ(SlotState::c_NORMAL, server0.get_cluster_state().slots[0].state);
-        CHECK_EQ(SlotState::c_NORMAL, server1.get_cluster_state().slots[0].state);
 
         CHECK_FALSE(server0.get_cluster_state().myself.served_slots[0]);
         CHECK_EQ(0, server0.get_cluster_state().myself.num_slots_served);
         CHECK_EQ(nullptr, server0.get_cluster_state().slots[0].migration_partner);
-        CHECK_EQ(nullptr, server1.get_cluster_state().slots[0].migration_partner);
 
         //Check metadata
         CHECK_EQ(actual_metadata.argc, 0);

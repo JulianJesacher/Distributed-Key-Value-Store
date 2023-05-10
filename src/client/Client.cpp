@@ -38,11 +38,12 @@ namespace client {
         std::mt19937 random_engine(std::random_device{}());
         std::uniform_int_distribution<uint16_t> dist(0, nodes_connections_.size() - 1); //Important: [a, b] both borders inclusive
         uint16_t random_index = dist(random_engine);
-        return &std::next(nodes_connections_.begin(), random_index)->second;
+        auto ret = &std::next(nodes_connections_.begin(), random_index)->second;
+        return ret;
     }
 
     ResponseData get_response(net::Connection& connection) {
-        MetaData received_meta_data = get_metadata(connection);
+        MetaData received_meta_data = get_metadata(connection, "Client");
         Command received_cmd;
         ByteArray received_payload;
 
@@ -64,15 +65,15 @@ namespace client {
             if (!connect_to_node(ip, port).is_ok()) {
                 return false;
             }
-            slots_nodes_[slot] = ip_port;
         }
+        slots_nodes_[slot] = ip_port;
         return true;
     }
 
     observer_ptr<net::Connection> Client::get_node_connection_by_slot(uint16_t slot_number) {
         observer_ptr<net::Connection> link = nullptr;
         //Slot handled by unknown node, but another random node available
-        if (slots_nodes_[slot_number].empty() && !nodes_connections_.empty()) {
+        if (!nodes_connections_.empty() && (slots_nodes_[slot_number].empty() || !nodes_connections_.contains(slots_nodes_[slot_number]))) {
             link = get_random_connection();
         }
         //No node available
@@ -195,7 +196,13 @@ namespace client {
         send_instruction(*link, cmd, Instruction::c_GET);
 
         //handle response
-        MetaData received_meta_data = get_metadata(*link);
+        MetaData received_meta_data;
+        try {
+            received_meta_data = get_metadata(*link, "Get failed");
+        }
+        catch (std::exception& e) {
+            return Status::new_error("Get failed again");
+        }
         Command received_cmd = get_command(*link, received_meta_data.argc, received_meta_data.command_size);
 
         switch (received_meta_data.instruction) {
@@ -263,19 +270,26 @@ namespace client {
         return get_value(link, key, value, offset, size, false);
     }
 
-    Status Client::erase_value(observer_ptr<net::Connection> link, const std::string& key) {
+    Status Client::erase_value(observer_ptr<net::Connection> link, const std::string& key, bool asking) {
         uint16_t slot_number = node::cluster::get_key_hash(key) % node::cluster::CLUSTER_AMOUNT_OF_SLOTS;
-
         //No node available
         if (link == nullptr) {
             return Status::new_error("Not connected to any node");
         }
 
-        Command cmd{ key };
+        std::string asking_string = asking ? "true" : "false";
+        Command cmd{ key, asking_string };
         send_instruction(*link, cmd, Instruction::c_ERASE);
 
         //handle response
-        ResponseData response = get_response(*link);
+        ResponseData response;
+        try {
+            response = get_response(*link);
+        }
+        catch (std::runtime_error& e) {
+
+            return Status::new_error("Erase didn't work again");
+        }
         MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
         Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
         ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
@@ -308,7 +322,7 @@ namespace client {
             std::string other_port = received_cmd[to_integral(CommandFieldsAsk::c_OTHER_CLIENT_PORT)];
             std::string ip_port = get_ip_port(other_ip, std::stoi(other_port));
             observer_ptr<net::Connection> new_link = &nodes_connections_[ip_port];
-            return erase_value(new_link, key);
+            return erase_value(new_link, key, true);
         }
 
         default: {
@@ -321,7 +335,7 @@ namespace client {
         uint16_t slot_number = node::cluster::get_key_hash(key) % node::cluster::CLUSTER_AMOUNT_OF_SLOTS;
         observer_ptr<net::Connection> link = get_node_connection_by_slot(slot_number);
 
-        return erase_value(link, key);
+        return erase_value(link, key, false);
     }
 
     void Client::update_slot_info(ByteArray& data) {
@@ -438,11 +452,117 @@ namespace client {
 
 
     Status Client::migrate_slot(uint16_t slot, const std::string& importing_ip, int importing_port) {
-        return handle_slot_migration(slot, importing_ip, importing_port, Instruction::c_MIGRATE_SLOT);
+        std::string& serving_node_ip_port = slots_nodes_[slot];
+        if (serving_node_ip_port == "") {
+            return Status::new_error("Slot is not handled by a known node");
+        }
+
+        observer_ptr<net::Connection> serving_node_link = nullptr;
+        if (nodes_connections_.contains(serving_node_ip_port)) {
+            serving_node_link = &nodes_connections_[serving_node_ip_port];
+        }
+
+        if (serving_node_link == nullptr) {
+            std::string ip = serving_node_ip_port.substr(0, serving_node_ip_port.find(":"));
+            int port = std::stoi(serving_node_ip_port.substr(serving_node_ip_port.find(":") + 1));
+            if (!connect_to_node(ip, port).is_ok()) {
+                return Status::new_error("Could not connect to node");
+            }
+            serving_node_link = &nodes_connections_[serving_node_ip_port];
+        }
+
+        Command cmd{ std::to_string(slot), importing_ip, std::to_string(importing_port) };
+        send_instruction(*serving_node_link, cmd, Instruction::c_MIGRATE_SLOT);
+
+        //handle response
+        ResponseData response = get_response(*serving_node_link);
+        MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
+        Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
+        ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
+
+        switch (received_meta_data.instruction) {
+        case Instruction::c_ERROR_RESPONSE:
+        {
+            return Status::new_error(received_payload.to_string());
+        }
+
+        case Instruction::c_OK_RESPONSE:
+        {
+            return Status::new_ok();
+        }
+
+        case Instruction::c_MOVE:
+        {
+            if (!handle_move(received_cmd, slot)) {
+                return Status::new_error("Could not connect to new node");
+            }
+            return handle_slot_migration(slot, importing_ip, importing_port, Instruction::c_IMPORT_SLOT);
+        }
+
+        default:
+        {
+            return Status::new_unknown_response("Unknown response");
+        }
+        }
     }
 
-    Status Client::import_slot(uint16_t slot, const std::string& migrating_ip, int migrating_port) {
-        return handle_slot_migration(slot, migrating_ip, migrating_port, Instruction::c_IMPORT_SLOT);
+    Status Client::import_slot(uint16_t slot, const std::string& importing_ip, int importing_port) {
+        std::string& serving_node_ip_port = slots_nodes_[slot];
+        if (serving_node_ip_port == "") {
+            return Status::new_error("Slot is not handled by a known node");
+        }
+
+        std::string importing_ip_port = get_ip_port(importing_ip, importing_port);
+        observer_ptr<net::Connection> importing_link = nullptr;
+        if (nodes_connections_.contains(importing_ip_port)) {
+            importing_link = &nodes_connections_[importing_ip_port];
+        }
+
+        if (importing_link == nullptr) {
+            if (!connect_to_node(importing_ip, importing_port).is_ok()) {
+                return Status::new_error("Could not connect to node");
+            }
+            importing_link = &nodes_connections_[importing_ip_port];
+        }
+        
+        
+        std::string serving_node_ip = serving_node_ip_port.substr(0, serving_node_ip_port.find(":"));
+        uint16_t serving_node_port = std::stoi(serving_node_ip_port.substr(serving_node_ip_port.find(":") + 1));
+
+        Command cmd{ std::to_string(slot), serving_node_ip, std::to_string(serving_node_port) };
+        send_instruction(*importing_link, cmd, Instruction::c_IMPORT_SLOT);
+
+        //handle response
+        ResponseData response = get_response(*importing_link);
+        MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
+        Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
+        ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
+
+        switch (received_meta_data.instruction) {
+        case Instruction::c_ERROR_RESPONSE:
+        {
+            return Status::new_error(received_payload.to_string());
+        }
+
+        case Instruction::c_OK_RESPONSE:
+        {
+            return Status::new_ok();
+        }
+
+        case Instruction::c_MOVE:
+        {
+            if (!handle_move(received_cmd, slot)) {
+                return Status::new_error("Could not connect to new node");
+            }
+            return handle_slot_migration(slot, serving_node_ip, serving_node_port, Instruction::c_IMPORT_SLOT);
+        }
+
+        default:
+        {
+            return Status::new_unknown_response("Unknown response");
+        }
+        }
+        return handle_slot_migration(slot, importing_ip, importing_port, Instruction::c_IMPORT_SLOT);
     }
 
     Status Client::add_node_to_cluster(const std::string& name, const std::string& ip, int client_port, int cluster_port) {
@@ -467,6 +587,10 @@ namespace client {
         }
         case Instruction::c_OK_RESPONSE:
         {
+            //Connect to new node
+            if (!connect_to_node(ip, client_port).is_ok()) {
+                return Status::new_error("Could not connect to node");
+            }
             return Status::new_ok();
         }
         default:

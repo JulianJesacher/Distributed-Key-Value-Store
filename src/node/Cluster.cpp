@@ -63,19 +63,27 @@ namespace node::cluster {
     }
 
     void send_ping(ClusterState& state) {
-        std::mt19937 random_engine(std::random_device{}());
-        std::uniform_int_distribution<uint16_t> dist(0, state.size - 1); //Important: [a, b] both borders inclusive
-        uint16_t random_index = dist(random_engine);
-        ClusterNode& rand_node = std::next(state.nodes.begin(), random_index)->second;
+        if (state.size == 0) {
+            return;
+        }
 
-        if (rand_node.outgoing_link.fd() != -1) {
-            send_ping(&rand_node.outgoing_link, state);
+        auto required_nodes = static_cast<uint16_t>(ceil(state.size / 10.0));
+        for (uint16_t i = 0; i < required_nodes; ++i) {
+            std::mt19937 random_engine(std::random_device{}());
+            std::uniform_int_distribution<uint16_t> dist(0, state.size - 1); //Important: [a, b] both borders inclusive
+            uint16_t random_index = dist(random_engine);
+            ClusterNode& rand_node = std::next(state.nodes.begin(), random_index)->second;
+
+            if (rand_node.outgoing_link.is_connected() && rand_node.name != state.myself.name) {
+                send_ping(&rand_node.outgoing_link, state);
+            }
         }
     }
 
     void send_ping(observer_ptr<net::Connection> link, ClusterState& state) {
         auto required_nodes = static_cast<uint16_t>(ceil(state.size / 10.0));
         ClusterGossipMsg msg;
+        msg.sender = state.myself.name;
 
         std::mt19937 random_engine(std::random_device{}());
         std::uniform_int_distribution<uint16_t> dist(0, state.size - 1); //Important: [a, b] both borders inclusive
@@ -105,6 +113,7 @@ namespace node::cluster {
             nodes_size_bytes
         );
         link->send(reinterpret_cast<char*>(msg.slots.data()), slots_size_bytes);
+        link->send(reinterpret_cast<char*>(msg.sender.data()), msg.sender.size());
         //TODO: Clean up
     }
 
@@ -146,31 +155,43 @@ namespace node::cluster {
             update_served_slots_by_node(state, state.nodes[name]); //TODO: Remove
         }
 
+        //Receive all slots into a vector
+        std::vector<SlotGossipData> received_slots(sent_slots);
+        link.receive(reinterpret_cast<char*>(received_slots.data()), sent_slots * sizeof(SlotGossipData));
+
+        //Get sender
+        std::array<char, CLUSTER_NAME_LEN> name;
+        link.receive(name.data(), CLUSTER_NAME_LEN);
+        std::string sender_name(name.data());
+
         for (uint16_t slot_number = 0; slot_number < sent_slots; slot_number++) {
-            SlotGossipData slot_data;
-            protocol::get_payload(link, reinterpret_cast<char*>(&slot_data), sizeof(SlotGossipData));
-            convert_slot_to_host_order(slot_data);
-            state.slots[slot_number].amount_of_keys = slot_data.amount_of_keys;
-            state.slots[slot_number].state = slot_data.state;
+            //Every node knows best about it's own slots
+            if(state.myself.served_slots.test(slot_number)){
+                continue;
+            }
+
+            convert_slot_to_host_order(received_slots[slot_number]);
+            SlotGossipData& slot_data = received_slots[slot_number];
 
             std::string served_by_name{ slot_data.served_by_name.data() };
             if (served_by_name.size() != 0 && state.nodes.contains(served_by_name)) {
                 state.slots[slot_number].served_by = &state.nodes[served_by_name];
-            }
-            else {
-                state.slots[slot_number].served_by = nullptr;
             }
 
             std::string migration_parner_name{ slot_data.migration_partner_name.data() };
             if (migration_parner_name.size() != 0 && state.nodes.contains(migration_parner_name)) {
                 state.slots[slot_number].migration_partner = &state.nodes[migration_parner_name];
             }
-            else {
-                state.slots[slot_number].migration_partner = nullptr;
+
+            //Only the handling node can upate the slot info, because it knows best and the others don't care about this info
+            if (sender_name == std::string(state.myself.name.data())) {
+                state.slots[slot_number].amount_of_keys = slot_data.amount_of_keys;
+                state.slots[slot_number].state = slot_data.state;
             }
         }
 
         state.size = state.nodes.size();
+        state.part_of_cluster = true;
     }
 
 

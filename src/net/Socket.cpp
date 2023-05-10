@@ -72,7 +72,7 @@ namespace net {
 
         FileDescriptor client_fd = FileDescriptor{ ::accept(fd_.unwrap(), reinterpret_cast<sockaddr*>(&client), &len) };
         if (client_fd.unwrap() < 0) {
-            throw std::runtime_error("failed to accept connection");
+            throw std::runtime_error("failed to accept connection: " + std::to_string(errno));
         }
 
         return Connection{ std::move(client_fd), client };

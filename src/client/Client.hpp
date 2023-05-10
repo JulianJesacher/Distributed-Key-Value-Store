@@ -59,7 +59,7 @@ namespace client {
         Status put_value(observer_ptr<net::Connection> link, const std::string& key,
             const char* value, uint64_t size, int offset);
 
-        Status erase_value(observer_ptr<net::Connection> link, const std::string& key);
+        Status erase_value(observer_ptr<net::Connection> link, const std::string& key, bool asking);
 
         observer_ptr<net::Connection> get_random_connection();
 

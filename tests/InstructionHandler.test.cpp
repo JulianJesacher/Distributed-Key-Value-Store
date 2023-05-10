@@ -252,7 +252,7 @@ TEST_CASE("Test erase") {
 
     int port{ 3000 };
     std::string key{ "key" };
-    protocol::Command sent_command{"key"};
+    protocol::Command sent_command{"key", "true"};
 
     auto send_command = [&]() {
         net::Socket client{};

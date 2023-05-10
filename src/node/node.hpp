@@ -16,7 +16,7 @@
 namespace node {
 
     constexpr int NODE_WAIT_TIMEOUT = 1000;
-    constexpr int NODE_PING_PAUSE = 1000;
+    constexpr int NODE_PING_PAUSE = 50;
 
     class Node {
     public:
@@ -46,8 +46,8 @@ namespace node {
         void start() {
             running_ = true;
             gossiping_ = true;
-            main_loop();
             gossip_thread_ = std::thread(&Node::gossip, this);
+            main_loop();
         }
 
         void stop() {
@@ -56,6 +56,10 @@ namespace node {
             if (gossip_thread_.joinable()) {
                 gossip_thread_.join(); //TODO: Detach or join?
             }
+        }
+
+        void stop_gossiping() {
+            gossiping_ = false;
         }
 
         net::Epoll& get_connections_epoll() {

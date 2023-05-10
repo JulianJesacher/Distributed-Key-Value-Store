@@ -6,11 +6,11 @@
 
 namespace node::protocol {
 
-    MetaData get_metadata(net::Connection& connection) {
+    MetaData get_metadata(net::Connection& connection, std::string debug_string) { //TODO
         MetaData meta_data;
         ssize_t received = connection.receive(reinterpret_cast<char*>(&meta_data), sizeof(MetaData));
         if (received != sizeof(MetaData)) {
-            throw std::runtime_error("Failed to receive metadata");
+            throw std::runtime_error("Failed to receive metadata, received " + std::to_string(received) + " bytes, errno: " + std::to_string(errno) + " " + debug_string + " data: " + std::string(reinterpret_cast<char*>(&meta_data), received));
         }
 
         //Convert to host byte order
@@ -57,14 +57,14 @@ namespace node::protocol {
         connection.receive(dest, payload_size);
     }
 
-    void send_instruction(net::Connection& connection, const Command& command, Instruction i, const char* payload, uint64_t payload_size) {
+    ssize_t send_instruction(net::Connection& connection, const Command& command, Instruction i, const char* payload, uint64_t payload_size) {
         uint64_t command_size = get_command_size(command);
         MetaData meta_data{};
         meta_data.instruction = i;
         meta_data.argc = htons(static_cast<uint16_t>(command.size()));
         meta_data.command_size = htobe64(command_size);
         meta_data.payload_size = htobe64(payload_size);
-
+        ssize_t total_sent = 0;
 
         //Concatenate metadata and command to save one send() syscall
         uint64_t size_without_payload = sizeof(meta_data) + command_size;
@@ -73,25 +73,26 @@ namespace node::protocol {
 
         std::memcpy(data.data(), &meta_data, sizeof(meta_data));
         serialize_command(command, data.subspan(sizeof(meta_data)));
-        connection.send(data);
+        total_sent += connection.send(data);
 
         if (payload != nullptr && payload_size > 0) {
-            connection.send(payload, payload_size);
+            total_sent += connection.send(payload, payload_size);
         }
+
+        return total_sent;
     }
 
-    void send_instruction(net::Connection& connection, const  Status& state) {
+    ssize_t send_instruction(net::Connection& connection, const  Status& state) {
         if (state.is_ok()) {
-            send_instruction(connection, {}, Instruction::c_OK_RESPONSE);
-            return;
+            return send_instruction(connection, {}, Instruction::c_OK_RESPONSE);
         }
 
         const std::string& error_msg = state.get_msg();
-        send_instruction(connection, { }, Instruction::c_ERROR_RESPONSE, error_msg);
+        return send_instruction(connection, { }, Instruction::c_ERROR_RESPONSE, error_msg);
     }
 
-    void send_instruction(net::Connection& connection, const Command& command, Instruction i, const std::string& payload) {
-        send_instruction(connection, command, i, payload.data(), payload.size());
+    ssize_t send_instruction(net::Connection& connection, const Command& command, Instruction i, const std::string& payload) {
+        return send_instruction(connection, command, i, payload.data(), payload.size());
     }
 
     uint64_t get_command_size(const Command& command) {

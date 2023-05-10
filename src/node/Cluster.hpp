@@ -34,11 +34,11 @@ namespace node::cluster {
         uint16_t num_slots_served;
     };
 
-    struct ClusterNode: public ClusterNodeGossipData {
+    struct ClusterNode : public ClusterNodeGossipData {
         net::Connection outgoing_link;
     };
 
-    enum class SlotState: uint8_t {
+    enum class SlotState : uint8_t {
         c_NORMAL = 0,
         c_MIGRATING = 1,
         c_IMPORTING = 2,
@@ -65,11 +65,13 @@ namespace node::cluster {
         uint16_t size;
         std::vector<Slot> slots;
         ClusterNode myself;
+        bool part_of_cluster;
     };
 
     struct ClusterGossipMsg {
         std::vector<ClusterNodeGossipData> nodes;
         std::vector<SlotGossipData> slots;
+        std::array<char, CLUSTER_NAME_LEN> sender;
     };
 
     void send_ping(observer_ptr<net::Connection> link, ClusterState& state);

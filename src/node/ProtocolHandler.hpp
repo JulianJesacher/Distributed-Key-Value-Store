@@ -20,7 +20,7 @@ namespace node {
 
         // Package structure: metadata | command_1_size | command_1 | command_2_size | command_2 | ... | payload_size | payload
         // commandX_size is of type uint64_t
-        enum class Instruction: uint8_t {
+        enum class Instruction : uint8_t {
             c_PUT = 0,
             c_GET = 1,
             c_ERASE = 2,
@@ -70,7 +70,8 @@ namespace node {
 
         enum class CommandFieldsErase {
             c_KEY = 0,
-            enum_size = 1
+            c_ASKING = 1,
+            enum_size = 2
         };
 
         enum class CommandFieldsMeet {
@@ -126,7 +127,7 @@ namespace node {
             enum_size = 3
         };
 
-        MetaData get_metadata(net::Connection& connection);
+        MetaData get_metadata(net::Connection& connection, std::string debug_string = "");
 
         Command get_command(net::Connection& connection, uint16_t argc, uint64_t command_size);
 
@@ -136,12 +137,12 @@ namespace node {
 
         void get_payload(net::Connection& connection, char* dest, uint64_t payload_size);
 
-        void send_instruction(net::Connection& connection, const Command& command, Instruction i,
+        ssize_t send_instruction(net::Connection& connection, const Command& command, Instruction i,
             const char* payload = nullptr, uint64_t payload_size = 0);
 
-        void send_instruction(net::Connection& connection, const  Status& state);
+        ssize_t send_instruction(net::Connection& connection, const  Status& state);
 
-        void send_instruction(net::Connection& connection, const Command& command, Instruction i, const std::string& payload);
+        ssize_t send_instruction(net::Connection& connection, const Command& command, Instruction i, const std::string& payload);
 
         uint64_t get_command_size(const Command& command);
 

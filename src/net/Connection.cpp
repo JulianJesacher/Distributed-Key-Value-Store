@@ -28,7 +28,7 @@ namespace net {
     }
 
     int Connection::fd() const {
-        return fd_->unwrap();
+        return  fd_->unwrap();
     }
 
     bool Connection::is_connected() const {
@@ -40,7 +40,11 @@ namespace net {
     }
 
     ssize_t Connection::send(const char* data, uint64_t size) {
-        return net::send(fd_->unwrap(), data, size);
+        auto sent = net::send(fd_->unwrap(), data, size);
+        if (sent != size) {
+            throw std::runtime_error("Failed to send all data: " + std::to_string(errno));
+        }
+        return sent;
     }
 
     ssize_t Connection::send(std::span<const char> data) {
