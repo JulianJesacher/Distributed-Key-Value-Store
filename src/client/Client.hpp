@@ -15,7 +15,7 @@ namespace client {
 
         Client() = default;
 
-        Status connect_to_node(const std::string& ip, int port);
+        Status connect_to_node(const std::string& ip, uint16_t port);
 
         void disconnect_all();
 
@@ -41,7 +41,7 @@ namespace client {
 
         Status import_slot(uint16_t slot, const std::string& migrating_ip, int migrating_port);
 
-        Status add_node_to_cluster(const std::string& name, const std::string& ip, int client_port, int cluster_port);
+        Status add_node_to_cluster(const std::string& name, const std::string& ip, uint16_t client_port, uint16_t cluster_port);
 
     private:
 

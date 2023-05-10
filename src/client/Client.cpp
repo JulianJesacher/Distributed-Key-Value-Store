@@ -8,14 +8,14 @@ using namespace node::protocol;
 
 namespace client {
 
-    std::string get_ip_port(const std::string& ip, int port) {
+    std::string get_ip_port(const std::string& ip, uint16_t port) {
         return ip + ":" + std::to_string(port);
     }
     std::string get_ip_port(const std::string& ip, const std::string& port) {
         return ip + ":" + port;
     }
 
-    Status Client::connect_to_node(const std::string& ip, int port) {
+    Status Client::connect_to_node(const std::string& ip, uint16_t port) {
         net::Socket socket{};
         std::string ip_port = get_ip_port(ip, port);
         try {
@@ -58,7 +58,7 @@ namespace client {
 
     bool Client::handle_move(Command& received_cmd, uint16_t slot) {
         std::string ip = received_cmd[to_integral(CommandFieldsMove::c_OTHER_IP)];
-        int port = std::stoi(received_cmd[to_integral(CommandFieldsMove::c_OTHER_CLIENT_PORT)]);
+        uint16_t port = std::stoi(received_cmd[to_integral(CommandFieldsMove::c_OTHER_CLIENT_PORT)]);
         std::string ip_port = get_ip_port(ip, port);
 
         if (!nodes_connections_.contains(ip_port)) {
@@ -158,7 +158,7 @@ namespace client {
 
     bool Client::handle_ask(Command& received_cmd) {
         std::string ip = received_cmd[to_integral(CommandFieldsAsk::c_OTHER_IP)];
-        int port = std::stoi(received_cmd[to_integral(CommandFieldsAsk::c_OTHER_CLIENT_PORT)]);
+        uint16_t port = std::stoi(received_cmd[to_integral(CommandFieldsAsk::c_OTHER_CLIENT_PORT)]);
         std::string ip_port = get_ip_port(ip, port);
 
         if (!nodes_connections_.contains(ip_port)) {
@@ -171,7 +171,7 @@ namespace client {
 
     bool Client::handle_no_ask_error(Command& received_cmd) {
         std::string ip = received_cmd[to_integral(CommandFieldsNoAskingError::c_OTHER_IP)];
-        int port = std::stoi(received_cmd[to_integral(CommandFieldsNoAskingError::c_OTHER_CLIENT_PORT)]);
+        uint16_t port = std::stoi(received_cmd[to_integral(CommandFieldsNoAskingError::c_OTHER_CLIENT_PORT)]);
         std::string ip_port = get_ip_port(ip, port);
 
         if (!nodes_connections_.contains(ip_port)) {
@@ -408,7 +408,7 @@ namespace client {
 
         if (partner_link == nullptr) {
             std::string ip = partner_ip_port.substr(0, partner_ip_port.find(":"));
-            int port = std::stoi(partner_ip_port.substr(partner_ip_port.find(":") + 1));
+            uint16_t port = std::stoi(partner_ip_port.substr(partner_ip_port.find(":") + 1));
             if (!connect_to_node(ip, port).is_ok()) {
                 return Status::new_error("Could not connect to node");
             }
@@ -464,7 +464,7 @@ namespace client {
 
         if (serving_node_link == nullptr) {
             std::string ip = serving_node_ip_port.substr(0, serving_node_ip_port.find(":"));
-            int port = std::stoi(serving_node_ip_port.substr(serving_node_ip_port.find(":") + 1));
+            uint16_t port = std::stoi(serving_node_ip_port.substr(serving_node_ip_port.find(":") + 1));
             if (!connect_to_node(ip, port).is_ok()) {
                 return Status::new_error("Could not connect to node");
             }
@@ -565,7 +565,7 @@ namespace client {
         return handle_slot_migration(slot, importing_ip, importing_port, Instruction::c_IMPORT_SLOT);
     }
 
-    Status Client::add_node_to_cluster(const std::string& name, const std::string& ip, int client_port, int cluster_port) {
+    Status Client::add_node_to_cluster(const std::string& name, const std::string& ip, uint16_t client_port, uint16_t cluster_port) {
         observer_ptr<net::Connection> link = get_random_connection();
         if (link == nullptr) {
             return Status::new_error("Not connected to any node");

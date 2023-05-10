@@ -27,7 +27,7 @@ void compare_cluster_node(const ClusterNode& node1, const ClusterNode& node2) {
 TEST_CASE("Test connect") {
     std::cout << "Test connect" << std::endl;
 
-    int client_port0 = 8080, cluster_port0 = 8081;
+    uint16_t client_port0 = 8080, cluster_port0 = 8081;
     Client client0{};
     Node node0 = Node::new_in_memory_node("node0", client_port0, cluster_port0, "127.0.0.1");
 

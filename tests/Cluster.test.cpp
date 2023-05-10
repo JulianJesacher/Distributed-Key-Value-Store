@@ -214,7 +214,7 @@ TEST_CASE("test sharding") {
     server1.set_cluster_state(state1);
     server2.set_cluster_state(state2);
 
-    auto process_instruction = [&](Node& server, int port) {
+    auto process_instruction = [&](Node& server, uint16_t port) {
         net::Socket socket{};
         if (!net::is_listening(socket.fd())) {
             socket.listen(port);
@@ -224,7 +224,7 @@ TEST_CASE("test sharding") {
         server.handle_connection(connection);
     };
 
-    auto send_instruction = [&](const protocol::Command command, protocol::Instruction instruction, const std::string& payload, int port) {
+    auto send_instruction = [&](const protocol::Command command, protocol::Instruction instruction, const std::string& payload, uint16_t port) {
         net::Socket socket{};
         net::Connection connection = socket.connect(port);
         node::protocol::send_instruction(connection, command, instruction, payload);

@@ -38,7 +38,7 @@ TEST_CASE("Test put") {
     //Test return value
     key_value_store::InMemoryKVS kvs{};
     cluster::ClusterState cluster_state{};
-    int port{ 3000 };
+    uint16_t port{ 3000 };
     cluster_state.myself = cluster::ClusterNode{};
     cluster_state.slots.resize(cluster::CLUSTER_AMOUNT_OF_SLOTS);
     for (int i = 0; i < cluster::CLUSTER_AMOUNT_OF_SLOTS; ++i) {
@@ -158,7 +158,7 @@ TEST_CASE("Test get") {
         cluster_state.myself.served_slots[i] = true;
     }
 
-    int port{ 3000 };
+    uint16_t port{ 3000 };
     std::string key{ "key" };
     protocol::Command sent_command{"key", "0", "0", "0"}; //Size 0 means whole value sent
 
@@ -250,7 +250,7 @@ TEST_CASE("Test erase") {
         cluster_state.myself.served_slots[i] = true;
     }
 
-    int port{ 3000 };
+    uint16_t port{ 3000 };
     std::string key{ "key" };
     protocol::Command sent_command{"key", "true"};
 
@@ -359,7 +359,7 @@ TEST_CASE("Test meet") {
         instruction_handler::handle_meet(c, command, cluster_state);
     };
 
-    auto node_listener = [&](int port) {
+    auto node_listener = [&](uint16_t port) {
         net::Socket server{};
         if (!net::is_listening(server.fd())) {
             server.listen(port);

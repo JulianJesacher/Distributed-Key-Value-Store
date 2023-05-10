@@ -23,7 +23,7 @@ TEST_CASE("Get Metadata") {
 
 
     net::Socket socket{};
-    int port{ 3000 };
+    uint16_t port{ 3000 };
 
     auto send_metadata = [&]() {
         networkingHelper::send(port, reinterpret_cast<const char*>(&converted_meta_data), sizeof(converted_meta_data));
@@ -78,7 +78,7 @@ TEST_CASE("Get Commands") {
 
 
     net::Socket socket{};
-    int port{ 3000 };
+    uint16_t port{ 3000 };
 
     auto send_command = [&]() {
         networkingHelper::send(port, command_data.data(), command_size);
@@ -105,7 +105,7 @@ TEST_CASE("Get Payload") {
     std::string payload{"This is a test payload!"};
 
     net::Socket socket{};
-    int port{ 3000 };
+    uint16_t port{ 3000 };
 
     auto send_command = [&]() {
         networkingHelper::send(port, payload.data(), payload.size());
