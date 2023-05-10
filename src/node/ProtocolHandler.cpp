@@ -6,7 +6,7 @@
 
 namespace node::protocol {
 
-    MetaData get_metadata(net::Connection& connection, std::string debug_string) { //TODO
+    MetaData get_metadata(net::Connection& connection, std::string debug_string) {
         MetaData meta_data;
         ssize_t received = connection.receive(reinterpret_cast<char*>(&meta_data), sizeof(MetaData));
         if (received != sizeof(MetaData)) {

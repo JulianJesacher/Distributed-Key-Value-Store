@@ -196,13 +196,7 @@ namespace client {
         send_instruction(*link, cmd, Instruction::c_GET);
 
         //handle response
-        MetaData received_meta_data;
-        try {
-            received_meta_data = get_metadata(*link, "Get failed");
-        }
-        catch (std::exception& e) {
-            return Status::new_error("Get failed again");
-        }
+        MetaData received_meta_data = get_metadata(*link, "Get failed");
         Command received_cmd = get_command(*link, received_meta_data.argc, received_meta_data.command_size);
 
         switch (received_meta_data.instruction) {
@@ -355,7 +349,7 @@ namespace client {
                     slots_nodes_[slot_number] = ip_port;
                 }
                 else {
-                    slots_nodes_[slot_number] = ""; //TODO: Use optional
+                    slots_nodes_[slot_number] = "";
                 }
             }
         }
@@ -524,8 +518,8 @@ namespace client {
             }
             importing_link = &nodes_connections_[importing_ip_port];
         }
-        
-        
+
+
         std::string serving_node_ip = serving_node_ip_port.substr(0, serving_node_ip_port.find(":"));
         uint16_t serving_node_port = std::stoi(serving_node_ip_port.substr(serving_node_ip_port.find(":") + 1));
 

@@ -54,12 +54,13 @@ namespace node::cluster {
     void convert_slot_to_network_order(SlotGossipData& slot) {
         slot.amount_of_keys = htobe64(slot.amount_of_keys);
         slot.slot_number = htobe16(slot.slot_number);
-        //TODO: Status?
+        //No need to convert state since it's a uint8_t
     }
 
     void convert_slot_to_host_order(SlotGossipData& slot) {
         slot.amount_of_keys = be64toh(slot.amount_of_keys);
         slot.slot_number = be16toh(slot.slot_number);
+        //No need to convert state since it's a uint8_t
     }
 
     void send_ping(ClusterState& state) {
@@ -114,7 +115,6 @@ namespace node::cluster {
         );
         link->send(reinterpret_cast<char*>(msg.slots.data()), slots_size_bytes);
         link->send(reinterpret_cast<char*>(msg.sender.data()), msg.sender.size());
-        //TODO: Clean up
     }
 
     void update_node(const std::string& name, ClusterState& state, const ClusterNodeGossipData& node) {
@@ -152,7 +152,7 @@ namespace node::cluster {
             protocol::get_payload(link, reinterpret_cast<char*>(&cur), sizeof(ClusterNodeGossipData));
             std::string name(cur.name.begin());
             update_node(name, state, convert_node_to_host_order(cur));
-            update_served_slots_by_node(state, state.nodes[name]); //TODO: Remove
+            update_served_slots_by_node(state, state.nodes[name]);
         }
 
         //Receive all slots into a vector

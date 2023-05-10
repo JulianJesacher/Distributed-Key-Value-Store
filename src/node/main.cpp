@@ -3,7 +3,7 @@
 #include <string>
 #include <fstream>
 
-#include "node.hpp"
+#include "Node.hpp"
 
 using std::cout;
 using Node = node::Node;
@@ -12,6 +12,7 @@ namespace po = boost::program_options;
 uint16_t default_client_port{ 5000 };
 uint16_t default_cluster_port{ 15000 };
 bool default_serve_all_slots{ false };
+
 
 std::string name;
 std::string ip;

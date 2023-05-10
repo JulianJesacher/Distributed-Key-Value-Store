@@ -56,8 +56,8 @@ namespace node {
     }
 
     Node Node::new_in_memory_node(std::string name, uint16_t client_port, uint16_t cluster_port, std::string ip, bool serve_all_slots) {
-        assert(name.size() <= cluster::CLUSTER_NAME_LEN); //TODO: Check nullterminal
-        assert(ip.size() <= cluster::CLUSTER_IP_LEN); //TODO: Check nullterminal
+        assert(name.size() <= cluster::CLUSTER_NAME_LEN);
+        assert(ip.size() <= cluster::CLUSTER_IP_LEN);
 
         std::array<char, cluster::CLUSTER_NAME_LEN> name_arr{};
         std::copy(name.begin(), name.end(), name_arr.begin());

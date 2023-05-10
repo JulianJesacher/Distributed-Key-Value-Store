@@ -91,7 +91,7 @@ namespace node::instruction_handler {
             ByteArray payload = ByteArray::new_allocated_byte_array(total_payload_size);
             protocol::get_payload(connection, payload.data(), cur_payload_size);
 
-            Status state = kvs.put(key, payload); //TODO: maybe change
+            Status state = kvs.put(key, payload);
             protocol::send_instruction(connection, state);
             cluster_state.slots[slot].amount_of_keys += 1;
             return;
@@ -237,7 +237,7 @@ namespace node::instruction_handler {
         auto partner = std::find_if(cluster_state.nodes.begin(), cluster_state.nodes.end(),
             [&ip, &port](const auto& iterator) {
                 const cluster::ClusterNode& node = iterator.second;
-                return memcmp(node.ip.data(), ip.data(), ip.size()) == 0 && node.client_port == port; //TODO: String compare
+                return std::string(node.ip.data()) == ip && node.client_port == port;
             });
 
         //Node not in cluster

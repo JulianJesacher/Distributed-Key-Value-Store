@@ -54,7 +54,7 @@ namespace node {
             running_ = false;
             gossiping_ = false;
             if (gossip_thread_.joinable()) {
-                gossip_thread_.join(); //TODO: Detach or join?
+                gossip_thread_.detach();
             }
         }
 

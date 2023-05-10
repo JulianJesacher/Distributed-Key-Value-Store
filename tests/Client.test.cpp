@@ -45,20 +45,6 @@ TEST_CASE("Test connect") {
         CHECK_EQ(client0.get_nodes_connections().size(), 1);
     }
 
-    //TODO: Fix
-    //SUBCASE("Server terminates connection") {
-    //    //When the client connects to the node and the node stops, a subsequent receive call on the opened connection should return -1
-    //    CHECK(client0.connect_to_node("127.0.0.1", client_port0));
-    //    auto& connection = client0.get_nodes_connections()["127.0.0.1:" + std::to_string(client_port0)];
-    //
-    //    node0.stop();
-    //    thread0.join();
-    //    std::this_thread::sleep_for(100ms);
-    //
-    //    char buf[1];
-    //    CHECK(connection.receive(buf, 1) == -1);
-    //}
-
     node0.stop();
     if (thread0.joinable()) {
         thread0.join();
