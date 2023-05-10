@@ -106,11 +106,17 @@ namespace client {
         send_instruction(*link, cmd, Instruction::c_PUT, value, size);
 
         //handle response
-        ResponseData response = get_response(*link);
+        ResponseData response;
+        try {
+            response = get_response(*link);
+        }
+        catch (std::exception& e) {
+            return Status::new_error(e.what());
+        }
+
         MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
         Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
         ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
-
 
         switch (received_meta_data.instruction) {
         case Instruction::c_OK_RESPONSE:
@@ -182,7 +188,6 @@ namespace client {
         return true;
     }
 
-    //TODO: Handle case when server shuts down, connection still remains then receive_meta_data blocks
     Status Client::get_value(observer_ptr<net::Connection> link, const std::string& key, ByteArray& value, int offset, int size, bool asking) {
         uint16_t slot_number = node::cluster::get_key_hash(key) % node::cluster::CLUSTER_AMOUNT_OF_SLOTS;
 
@@ -196,8 +201,15 @@ namespace client {
         send_instruction(*link, cmd, Instruction::c_GET);
 
         //handle response
-        MetaData received_meta_data = get_metadata(*link, "Get failed");
-        Command received_cmd = get_command(*link, received_meta_data.argc, received_meta_data.command_size);
+        MetaData received_meta_data;
+        Command received_cmd;
+        try {
+            received_meta_data = get_metadata(*link, "Get failed");
+            received_cmd = get_command(*link, received_meta_data.argc, received_meta_data.command_size);
+        }
+        catch (std::exception& e) {
+            return Status::new_error(e.what());
+        }
 
         switch (received_meta_data.instruction) {
         case Instruction::c_GET_RESPONSE:
@@ -280,10 +292,10 @@ namespace client {
         try {
             response = get_response(*link);
         }
-        catch (std::runtime_error& e) {
-
-            return Status::new_error("Erase didn't work again");
+        catch (std::exception& e) {
+            return Status::new_error(e.what);
         }
+
         MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
         Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
         ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
@@ -365,7 +377,14 @@ namespace client {
         send_instruction(*link, cmd, Instruction::c_GET_SLOTS);
 
         //handle response
-        ResponseData response = get_response(*link);
+        ResponseData response;
+        try {
+            response = get_response(*link);
+        }
+        catch (std::exception& e) {
+            return Status::new_error(e.what);
+        }
+
         MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
         Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
         ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
@@ -413,7 +432,14 @@ namespace client {
         send_instruction(*partner_link, cmd, instruction);
 
         //handle response
-        ResponseData response = get_response(*partner_link);
+        ResponseData response;
+        try {
+            response = get_response(*partner_link);
+        }
+        catch (std::exception& e) {
+            return Status::new_error(e.what());
+        }
+
         MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
         Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
         ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
@@ -469,7 +495,14 @@ namespace client {
         send_instruction(*serving_node_link, cmd, Instruction::c_MIGRATE_SLOT);
 
         //handle response
-        ResponseData response = get_response(*serving_node_link);
+        ResponseData response;
+        try {
+            response = get_response(*serving_node_link);
+        }
+        catch (std::exception& e) {
+            return Status::new_error(e.what());
+        }
+
         MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
         Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
         ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
@@ -527,7 +560,14 @@ namespace client {
         send_instruction(*importing_link, cmd, Instruction::c_IMPORT_SLOT);
 
         //handle response
-        ResponseData response = get_response(*importing_link);
+        ResponseData response;
+        try {
+            response = get_response(*importing_link);
+        }
+        catch (std::exception& e) {
+            return Status::new_error(e.what());
+        }
+
         MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
         Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
         ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
@@ -569,7 +609,14 @@ namespace client {
         send_instruction(*link, cmd, Instruction::c_MEET);
 
         //handle response
-        ResponseData response = get_response(*link);
+        ResponseData response;
+        try {
+            response = get_response(*link);
+        }
+        catch (std::exception& e) {
+            return Status::new_error(e.what());
+        }
+
         MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
         Command& received_cmd = std::get<to_integral(ResponseDataFields::c_COMMAND)>(response);
         ByteArray& received_payload = std::get<to_integral(ResponseDataFields::c_PAYLOAD)>(response);
