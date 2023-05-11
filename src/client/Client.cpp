@@ -293,7 +293,7 @@ namespace client {
             response = get_response(*link);
         }
         catch (std::exception& e) {
-            return Status::new_error(e.what);
+            return Status::new_error(e.what());
         }
 
         MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
@@ -382,7 +382,7 @@ namespace client {
             response = get_response(*link);
         }
         catch (std::exception& e) {
-            return Status::new_error(e.what);
+            return Status::new_error(e.what());
         }
 
         MetaData& received_meta_data = std::get<to_integral(ResponseDataFields::c_METADATA)>(response);
