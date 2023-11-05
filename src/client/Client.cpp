@@ -56,6 +56,10 @@ namespace client {
         return std::make_tuple(std::move(received_meta_data), std::move(received_cmd), std::move(received_payload));
     }
 
+    //This function is called if a node sends a MOVE instruction
+    //That happends when a slot has been moved from a node to another node
+    //The response of the MOVE instruction has the information of the new node
+    //This function connects to the new node and updates the slot info
     bool Client::handle_move(Command& received_cmd, uint16_t slot) {
         std::string ip = received_cmd[to_integral(CommandFieldsMove::c_OTHER_IP)];
         uint16_t port = std::stoi(received_cmd[to_integral(CommandFieldsMove::c_OTHER_CLIENT_PORT)]);
@@ -70,6 +74,7 @@ namespace client {
         return true;
     }
 
+    //This function retrieves the connection of the node that handles the given slot
     observer_ptr<net::Connection> Client::get_node_connection_by_slot(uint16_t slot_number) {
         observer_ptr<net::Connection> link = nullptr;
         //Slot handled by unknown node, but another random node available
@@ -137,6 +142,9 @@ namespace client {
             return put_value(key, value, size, offset);
         }
 
+        //In this case, the node that received the PUT instruction is not the node that handles the slot yet,
+        //but the value should be set in the new node
+        //Therefore we cannot update the slot info yet and therefore have to send the instruction to the other node manually
         case Instruction::c_ASK:
         {
             if (!handle_ask(received_cmd)) {
@@ -162,6 +170,9 @@ namespace client {
         return put_value(link, key, value, size, offset);
     }
 
+    //This function is called if a node sends an ASK instruction
+    //That happens when a slot is in the process of being moved to another node
+    //This function connects to the new node
     bool Client::handle_ask(Command& received_cmd) {
         std::string ip = received_cmd[to_integral(CommandFieldsAsk::c_OTHER_IP)];
         uint16_t port = std::stoi(received_cmd[to_integral(CommandFieldsAsk::c_OTHER_CLIENT_PORT)]);
@@ -175,6 +186,10 @@ namespace client {
         return true;
     }
 
+    //This function is called if a node sends a NO_ASKING_ERROR instruction
+    //That happens when a slot is in the process of being moved to another node and a GET instruction is sent to the old node
+    //or to the new node without the ask flag
+    //This function connects to the new node
     bool Client::handle_no_ask_error(Command& received_cmd) {
         std::string ip = received_cmd[to_integral(CommandFieldsNoAskingError::c_OTHER_IP)];
         uint16_t port = std::stoi(received_cmd[to_integral(CommandFieldsNoAskingError::c_OTHER_CLIENT_PORT)]);
@@ -344,18 +359,26 @@ namespace client {
         return erase_value(link, key, false);
     }
 
+    //This function takes in a string of the form
+    //slot_number_begin slot_number_end ip:port
+    //and updates the slot info
     void Client::update_slot_info(ByteArray& data) {
-        std::stringstream ss(data.to_string());
+        std::stringstream stream(data.to_string());
         std::string current_line;
-        while (std::getline(ss, current_line, '\n')) {
+
+        //Split the string by new line
+        while (std::getline(stream, current_line, '\n')) {
+            //Split the string by space
             std::stringstream current_line_ss(current_line);
 
+            //Extract the slot numbers and the ip:port
             uint16_t slot_number_begin, slot_number_end;
+            std::string ip_port;
             current_line_ss >> slot_number_begin;
             current_line_ss >> slot_number_end;
-            std::string ip_port;
             current_line_ss >> ip_port;
-
+            
+            //Update the slot info
             for (uint16_t slot_number = slot_number_begin; slot_number <= slot_number_end; ++slot_number) {
                 if (ip_port != "NULL") {
                     slots_nodes_[slot_number] = ip_port;
@@ -367,6 +390,7 @@ namespace client {
         }
     }
 
+    //This function makes the request to a random node to get the slot info of the cluster
     Status Client::get_update_slot_info() {
         observer_ptr<net::Connection> link = get_random_connection();
         if (link == nullptr) {
@@ -408,6 +432,7 @@ namespace client {
         }
     }
 
+    //This function is called to connect to a partner node and send it the instruction to migrate or import a slot
     Status Client::handle_slot_migration(uint16_t slot, const std::string& partner_ip, int partner_port, Instruction instruction) {
         std::string& partner_ip_port = slots_nodes_[slot];
         if (partner_ip_port == "") {
@@ -419,6 +444,7 @@ namespace client {
             partner_link = &nodes_connections_[partner_ip_port];
         }
 
+        //Connect to partner node if not already connected
         if (partner_link == nullptr) {
             std::string ip = partner_ip_port.substr(0, partner_ip_port.find(":"));
             uint16_t port = std::stoi(partner_ip_port.substr(partner_ip_port.find(":") + 1));
@@ -470,7 +496,7 @@ namespace client {
         }
     }
 
-
+    //This function is called when a slot is migrated from one node to another
     Status Client::migrate_slot(uint16_t slot, const std::string& importing_ip, int importing_port) {
         std::string& serving_node_ip_port = slots_nodes_[slot];
         if (serving_node_ip_port == "") {
@@ -533,6 +559,7 @@ namespace client {
         }
     }
 
+    //This function is called if a slot is imported from another node
     Status Client::import_slot(uint16_t slot, const std::string& importing_ip, int importing_port) {
         std::string& serving_node_ip_port = slots_nodes_[slot];
         if (serving_node_ip_port == "") {
@@ -599,6 +626,7 @@ namespace client {
         return handle_slot_migration(slot, importing_ip, importing_port, Instruction::c_IMPORT_SLOT);
     }
 
+    //This function adds a node to the cluster by sending a MEET instruction to a random node
     Status Client::add_node_to_cluster(const std::string& name, const std::string& ip, uint16_t client_port, uint16_t cluster_port) {
         observer_ptr<net::Connection> link = get_random_connection();
         if (link == nullptr) {
